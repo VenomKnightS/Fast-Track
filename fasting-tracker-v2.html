@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast — Fasting Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0f0a;
+  --surface: #141810;
+  --surface2: #1c221a;
+  --border: #2a3326;
+  --accent: #7eb87a;
+  --accent2: #b5d4b1;
+  --gold: #c9a84c;
+  --gold2: #e8cc80;
+  --text: #d8e4d5;
+  --text-muted: #7a9175;
+  --danger: #c46a5a;
+  --blue: #5ba3c9;
+  --blue2: #8dc4e0;
+  --orange: #d4854a;
+  --glow: rgba(126,184,122,0.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'DM Mono',monospace;
+  display:flex;flex-direction:column;
+  height:100vh;
+  overflow:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:1000;opacity:0.5;
+}
+
+/* ===== VIEWS ===== */
+.view{display:none;flex-direction:column;height:100%;overflow:hidden;}
+.view.active{display:flex;}
+
+/* ===== SCROLLABLE CONTENT ===== */
+.scroll-content{
+  flex:1;overflow-y:auto;padding:1rem 1rem 6rem;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+}
+.scroll-content::-webkit-scrollbar{width:4px;}
+.scroll-content::-webkit-scrollbar-track{background:transparent;}
+.scroll-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;}
+
+/* ===== HEADER ===== */
+.app-header{
+  padding:1rem 1rem 0.5rem;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.app-title{
+  font-family:'DM Serif Display',serif;
+  font-size:1.8rem;letter-spacing:-0.02em;
+  color:var(--accent2);
+}
+.app-title span{font-style:italic;color:var(--accent);}
+.header-date{font-size:0.6rem;color:var(--text-muted);letter-spacing:0.1em;}
+
+/* ===== CARDS ===== */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:1.25rem;margin-bottom:0.75rem;
+}
+.card-label{
+  font-size:0.6rem;letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--text-muted);margin-bottom:0.6rem;
+}
+
+/* ===== TIMER ===== */
+.timer-card{
+  text-align:center;position:relative;overflow:hidden;
+}
+.timer-card::before{
+  content:'';position:absolute;top:-80px;left:50%;
+  transform:translateX(-50%);width:240px;height:240px;
+  background:radial-gradient(circle,var(--glow) 0%,transparent 70%);
+  pointer-events:none;transition:opacity 0.5s;
+}
+.timer-card.active::before{opacity:1;}
+.timer-card:not(.active)::before{opacity:0;}
+.timer-display{
+  font-family:'DM Serif Display',serif;
+  font-size:clamp(2.4rem,9vw,4rem);
+  letter-spacing:0.04em;color:var(--accent2);
+  line-height:1;margin:0.25rem 0;
+  transition:color 0.5s;
+}
+.timer-display.inactive{color:var(--text-muted);}
+.timer-sub{font-size:0.65rem;color:var(--text-muted);letter-spacing:0.06em;}
+.fast-note{
+  font-size:0.62rem;color:var(--gold);
+  margin-top:0.4rem;letter-spacing:0.04em;
+}
+
+/* ===== CURRENT STAGE CARD ===== */
+.stage-tap-card{
+  cursor:pointer;transition:border-color 0.2s,background 0.2s;
+  display:flex;align-items:center;gap:1rem;
+}
+.stage-tap-card:hover{border-color:var(--accent);background:rgba(126,184,122,0.04);}
+.stage-tap-icon{font-size:2rem;flex-shrink:0;}
+.stage-tap-info{flex:1;}
+.stage-tap-name{
+  font-family:'DM Serif Display',serif;font-size:1.2rem;
+  color:var(--gold2);margin-bottom:0.2rem;
+}
+.stage-tap-time{font-size:0.6rem;color:var(--gold);letter-spacing:0.08em;margin-bottom:0.3rem;}
+.stage-tap-preview{font-size:0.65rem;color:var(--text-muted);line-height:1.5;}
+.stage-tap-arrow{font-size:1rem;color:var(--text-muted);flex-shrink:0;}
+
+/* Progress bar */
+.prog-track{height:5px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-top:0.75rem;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:99px;transition:width 1s ease;}
+.prog-labels{display:flex;justify-content:space-between;margin-top:0.3rem;}
+.prog-label{font-size:0.55rem;color:var(--text-muted);}
+.prog-label.reached{color:var(--accent);}
+
+/* ===== CONTROL BUTTONS ===== */
+.btn-row{display:flex;gap:0.6rem;margin-bottom:0.75rem;}
+button{
+  font-family:'DM Mono',monospace;font-size:0.68rem;
+  letter-spacing:0.08em;text-transform:uppercase;
+  border:none;border-radius:8px;padding:0.65rem 1rem;
+  cursor:pointer;transition:all 0.18s;
+}
+.btn-primary{background:var(--accent);color:#0c0f0a;font-weight:500;flex:1;}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px);}
+.btn-danger{background:transparent;color:var(--danger);border:1px solid rgba(196,106,90,0.4);flex:1;}
+.btn-danger:hover{background:rgba(196,106,90,0.1);}
+.btn-ghost{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);}
+.btn-ghost:hover{color:var(--text);border-color:var(--accent);}
+.btn-sm{padding:0.4rem 0.7rem;font-size:0.62rem;}
+.btn-blue{background:rgba(91,163,201,0.15);color:var(--blue2);border:1px solid rgba(91,163,201,0.3);}
+.btn-blue:hover{background:rgba(91,163,201,0.25);}
+
+/* datetime inputs */
+.dt-group{flex:1;min-width:120px;display:flex;flex-direction:column;gap:0.3rem;}
+label{font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);}
+input[type="date"],input[type="time"],input[type="number"],select{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:'DM Mono',monospace;font-size:0.75rem;
+  padding:0.5rem 0.65rem;width:100%;outline:none;transition:border-color 0.2s;
+  color-scheme:dark;
+}
+input:focus,select:focus{border-color:var(--accent);}
+
+/* ===== WATER SECTION ===== */
+.water-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;}
+.water-oz-display{
+  font-family:'DM Serif Display',serif;font-size:2rem;
+  color:var(--blue2);line-height:1;
+}
+.water-oz-unit{font-size:0.65rem;color:var(--text-muted);letter-spacing:0.08em;}
+.water-goal-line{font-size:0.6rem;color:var(--text-muted);margin-top:0.15rem;}
+
+.water-bar-track{
+  height:10px;background:var(--surface2);border-radius:99px;
+  overflow:hidden;margin:0.6rem 0;
+}
+.water-bar-fill{
+  height:100%;border-radius:99px;
+  transition:width 0.5s ease,background 0.5s ease;
+}
+
+.water-btns{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem;}
+.water-btns button{flex:0;white-space:nowrap;}
+.water-unit-toggle{display:flex;gap:0.4rem;margin-bottom:0.6rem;}
+.toggle-btn{
+  font-size:0.6rem;padding:0.3rem 0.6rem;border-radius:6px;
+  border:1px solid var(--border);background:transparent;color:var(--text-muted);
+  cursor:pointer;transition:all 0.15s;
+}
+.toggle-btn.active{background:var(--surface2);color:var(--text);border-color:var(--accent);}
+
+.bottle-size-row{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.6rem;flex-wrap:wrap;}
+.bottle-size-row label{white-space:nowrap;}
+.bottle-size-input{width:80px;flex-shrink:0;}
+
+.elec-badge{
+  display:inline-flex;align-items:center;gap:0.4rem;
+  font-size:0.62rem;padding:0.35rem 0.75rem;border-radius:99px;
+  background:rgba(201,168,76,0.12);color:var(--gold2);
+  border:1px solid rgba(201,168,76,0.25);cursor:pointer;
+  transition:all 0.15s;margin-top:0.5rem;
+}
+.elec-badge:hover{background:rgba(201,168,76,0.2);}
+.elec-count{
+  background:var(--gold);color:#0c0f0a;
+  border-radius:99px;padding:0.05rem 0.4rem;font-size:0.6rem;font-weight:500;
+}
+
+.water-tip{
+  font-size:0.62rem;color:var(--text-muted);line-height:1.6;
+  padding:0.75rem;background:rgba(91,163,201,0.06);
+  border-radius:8px;border-left:2px solid rgba(91,163,201,0.3);
+  margin-top:0.6rem;
+}
+
+/* ===== ENCOURAGEMENT ===== */
+.encourage-card .item{
+  display:flex;gap:0.75rem;padding:0.6rem 0;
+  border-bottom:1px solid var(--border);
+}
+.encourage-card .item:last-child{border-bottom:none;}
+.encourage-card .item-icon{font-size:1rem;flex-shrink:0;line-height:1.4;}
+.encourage-card .item-text{font-size:0.68rem;color:var(--text-muted);line-height:1.65;}
+.encourage-card .item-text strong{color:var(--accent2);font-weight:400;}
+
+/* ===== OK TO HAVE ===== */
+.ok-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.5rem;}
+.ok-item{
+  background:var(--surface2);border-radius:8px;padding:0.6rem 0.75rem;
+  font-size:0.65rem;color:var(--text-muted);
+  border:1px solid var(--border);
+}
+.ok-item.good{border-color:rgba(126,184,122,0.25);color:var(--accent2);}
+.ok-item.caution{border-color:rgba(201,168,76,0.2);color:var(--gold);}
+.ok-item.warn{border-color:rgba(196,106,90,0.2);color:var(--danger);}
+.ok-item .ok-label{font-size:0.55rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.2rem;opacity:0.7;}
+
+/* ===== CALCULATOR ===== */
+.calc-toggle-btn{
+  width:100%;text-align:left;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:1rem 1.25rem;
+  color:var(--text-muted);font-size:0.7rem;letter-spacing:0.08em;
+  display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;transition:border-color 0.2s;margin-bottom:0.75rem;
+}
+.calc-toggle-btn:hover{border-color:var(--accent);}
+.calc-toggle-btn.open{
+  border-color:var(--accent);border-radius:14px 14px 0 0;
+  border-bottom:none;margin-bottom:0;
+}
+.calc-panel{
+  background:var(--surface);border:1px solid var(--accent);
+  border-top:none;border-radius:0 0 14px 14px;
+  padding:1.25rem;margin-bottom:0.75rem;display:none;
+}
+.calc-panel.open{display:block;}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.75rem;}
+.calc-full{grid-column:1/-1;}
+.calc-result{
+  background:var(--surface2);border-radius:10px;padding:1rem;
+  border:1px solid var(--border);margin-top:0.5rem;
+}
+.calc-result-row{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:0.4rem 0;border-bottom:1px solid var(--border);font-size:0.68rem;
+}
+.calc-result-row:last-child{border-bottom:none;}
+.calc-result-label{color:var(--text-muted);}
+.calc-result-val{color:var(--gold2);font-family:'DM Serif Display',serif;font-size:1rem;}
+
+/* ===== STAGE DETAIL VIEW ===== */
+#stageView{background:var(--bg);}
+.stage-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1rem;flex-shrink:0;
+}
+.stage-nav-btn{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:0.5rem 0.9rem;
+  color:var(--text-muted);font-size:0.65rem;cursor:pointer;
+  transition:all 0.15s;letter-spacing:0.06em;text-transform:uppercase;
+}
+.stage-nav-btn:hover{border-color:var(--accent);color:var(--text);}
+.stage-nav-btn:disabled{opacity:0.25;cursor:default;}
+.stage-counter{font-size:0.65rem;color:var(--text-muted);letter-spacing:0.1em;}
+.stage-detail-scroll{flex:1;overflow-y:auto;padding:1rem 1.25rem 4rem;}
+.stage-detail-icon{font-size:3rem;margin-bottom:0.75rem;display:block;text-align:center;}
+.stage-detail-name{
+  font-family:'DM Serif Display',serif;font-size:2rem;
+  color:var(--gold2);text-align:center;margin-bottom:0.25rem;
+}
+.stage-detail-time{
+  text-align:center;font-size:0.65rem;color:var(--gold);
+  letter-spacing:0.1em;margin-bottom:1.5rem;
+}
+.stage-detail-body{
+  font-size:0.73rem;color:var(--text-muted);line-height:1.85;
+  margin-bottom:1rem;
+}
+.stage-detail-highlights{
+  display:flex;flex-direction:column;gap:0.5rem;
+}
+.highlight-item{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:0.75rem 1rem;
+  font-size:0.67rem;color:var(--text-muted);line-height:1.6;
+  border-left:3px solid var(--accent);
+}
+.stage-status-banner{
+  text-align:center;margin:1rem 0;
+  font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;
+  padding:0.5rem;border-radius:8px;
+}
+.stage-status-banner.done{background:rgba(126,184,122,0.1);color:var(--accent);}
+.stage-status-banner.now{background:rgba(201,168,76,0.1);color:var(--gold2);}
+.stage-status-banner.upcoming{background:rgba(42,51,38,0.5);color:var(--text-muted);}
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav{
+  display:flex;justify-content:space-around;align-items:center;
+  padding:0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
+  background:var(--surface);border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+.nav-btn{
+  display:flex;flex-direction:column;align-items:center;gap:0.2rem;
+  background:none;border:none;padding:0.4rem 1rem;
+  color:var(--text-muted);font-size:0.55rem;letter-spacing:0.1em;
+  text-transform:uppercase;cursor:pointer;border-radius:8px;
+  transition:color 0.15s;
+}
+.nav-btn .nav-icon{font-size:1.1rem;}
+.nav-btn.active{color:var(--accent);}
+.nav-btn:hover{color:var(--text);}
+
+/* ===== MODAL ===== */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.75);z-index:500;
+  align-items:center;justify-content:center;padding:1.5rem;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:1.5rem;width:100%;max-width:400px;
+}
+.modal h3{
+  font-family:'DM Serif Display',serif;font-size:1.4rem;
+  color:var(--accent2);margin-bottom:0.5rem;
+}
+.modal p{font-size:0.68rem;color:var(--text-muted);line-height:1.6;margin-bottom:1rem;}
+.modal-btns{display:flex;gap:0.6rem;margin-top:1rem;}
+
+/* ===== SETTINGS TAB ===== */
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:0.75rem 0;border-bottom:1px solid var(--border);}
+.settings-row:last-child{border-bottom:none;}
+.settings-label{font-size:0.7rem;color:var(--text);}
+.settings-sub{font-size:0.6rem;color:var(--text-muted);margin-top:0.1rem;}
+
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+.fade-in{animation:fadeSlideUp 0.3s ease forwards;}
+</style>
+</head>
+<body>
+
+<!-- ==================== MAIN VIEW ==================== -->
+<div class="view active" id="mainView">
+  <div class="app-header">
+    <div>
+      <div class="app-title">F<span>ast</span></div>
+    </div>
+    <div class="header-date" id="headerDate"></div>
+  </div>
+
+  <div class="scroll-content">
+
+    <!-- TIMER CARD -->
+    <div class="card timer-card" id="timerCard">
+      <div class="card-label" id="timerLabel">No active fast</div>
+      <div class="timer-display inactive" id="timerDisplay">00:00:00</div>
+      <div class="timer-sub" id="timerSub">Tap "Start" below to begin</div>
+      <div class="fast-note" id="fastNote" style="display:none"></div>
+    </div>
+
+    <!-- CURRENT STAGE (tappable) -->
+    <div class="card stage-tap-card" id="stageTapCard" onclick="openStageView()">
+      <div class="stage-tap-icon" id="stageTapIcon">💤</div>
+      <div class="stage-tap-info">
+        <div class="stage-tap-name" id="stageTapName">Not fasting</div>
+        <div class="stage-tap-time" id="stageTapTime">Start your fast to track stages</div>
+        <div class="stage-tap-preview" id="stageTapPreview">Tap to explore all body stages →</div>
+      </div>
+      <div class="stage-tap-arrow">›</div>
+    </div>
+    <!-- Progress bar -->
+    <div class="card" style="padding:0.75rem 1.25rem;">
+      <div class="prog-track"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+      <div class="prog-labels">
+        <span class="prog-label" id="pl0">0h</span>
+        <span class="prog-label" id="pl12">12h</span>
+        <span class="prog-label" id="pl18">18h</span>
+        <span class="prog-label" id="pl24">24h</span>
+        <span class="prog-label" id="pl36">36h</span>
+        <span class="prog-label" id="pl48">48h+</span>
+      </div>
+    </div>
+
+    <!-- START CONTROLS -->
+    <div class="card" id="startCard">
+      <div class="card-label">Fast Start Time</div>
+      <div style="display:flex;gap:0.6rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+        <div class="dt-group">
+          <label>Date</label>
+          <input type="date" id="startDate">
+        </div>
+        <div class="dt-group">
+          <label>Stopped Eating</label>
+          <input type="time" id="startTime">
+        </div>
+      </div>
+      <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.6;">
+        ⏱ Fasting officially begins <strong style="color:var(--gold);">8 hours after</strong> you stop eating — your timer will reflect true fast time, not meal-stop time.
+      </div>
+      <div class="btn-row">
+        <button class="btn-ghost btn-sm" onclick="setNow()">Now</button>
+        <button class="btn-primary" onclick="startFast()">Start Fasting</button>
+        <button class="btn-danger" onclick="stopFast()">End Fast</button>
+      </div>
+    </div>
+
+    <!-- WATER SECTION -->
+    <div class="card" id="waterCard">
+      <div class="water-header">
+        <div>
+          <div class="card-label">Water Today</div>
+          <div class="water-oz-display" id="waterDisplay">0</div>
+          <div class="water-oz-unit" id="waterUnit">oz today</div>
+          <div class="water-goal-line" id="waterGoalLine">Goal: — oz/day</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:0.6rem;color:var(--text-muted);margin-bottom:0.3rem;">Electrolyte Packs</div>
+          <div class="elec-badge" onclick="logElectrolyte()">
+            ⚡ Log Pack <span class="elec-count" id="elecCount">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="water-bar-track">
+        <div class="water-bar-fill" id="waterBarFill" style="width:0%;background:var(--danger);"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:0.55rem;color:var(--text-muted);margin-bottom:0.6rem;">
+        <span>0</span><span id="wBarMid">—</span><span id="wBarGoal">Goal</span>
+      </div>
+
+      <!-- Unit toggle -->
+      <div class="water-unit-toggle">
+        <button class="toggle-btn active" id="toggleOz" onclick="setWaterUnit('oz')">oz</button>
+        <button class="toggle-btn" id="toggleMl" onclick="setWaterUnit('ml')">ml</button>
+      </div>
+
+      <!-- Bottle size -->
+      <div class="bottle-size-row">
+        <label>Bottle size:</label>
+        <input type="number" class="bottle-size-input" id="bottleSize" value="16.9" min="1" max="999" step="0.1">
+        <span style="font-size:0.62rem;color:var(--text-muted);" id="bottleSizeUnit">oz</span>
+      </div>
+
+      <!-- Quick-add buttons -->
+      <div class="water-btns">
+        <button class="btn-blue btn-sm" onclick="addBottle()">+ Bottle (<span id="bottleBtnLabel">16.9 oz</span>)</button>
+        <button class="btn-ghost btn-sm" onclick="addUnit(1)">+1 <span id="unitBtnLabel">oz</span></button>
+        <button class="btn-ghost btn-sm" onclick="addUnit(8)" id="addEightBtn">+8 oz</button>
+        <button class="btn-ghost btn-sm" onclick="removeUnit()" style="color:var(--danger);">−1</button>
+        <button class="btn-ghost btn-sm" onclick="resetWater()" style="font-size:0.55rem;color:var(--danger);">Reset</button>
+      </div>
+
+      <div class="water-tip">
+        💧 <strong style="color:var(--blue2);">Hydration matters.</strong> Aim for at least 64–80 oz (2–2.4 L) daily. With electrolytes, your tolerance increases — some people thrive on 100 oz+. Electrolytes (sodium, potassium, magnesium) prevent headaches and muscle cramps during fasting and help your body actually absorb water effectively.
+      </div>
+    </div>
+
+    <!-- OK TO HAVE -->
+    <div class="card encourage-card">
+      <div class="card-label">What's OK During a Fast</div>
+      <div class="ok-grid">
+        <div class="ok-item good"><div class="ok-label">✓ Free pass</div>Water, sparkling water, plain ice</div>
+        <div class="ok-item good"><div class="ok-label">✓ Free pass</div>Black coffee, plain green/black tea</div>
+        <div class="ok-item good"><div class="ok-label">✓ Recommended</div>Electrolytes (sodium, potassium, magnesium)</div>
+        <div class="ok-item good"><div class="ok-label">✓ OK</div>Himalayan pink salt in water</div>
+        <div class="ok-item caution"><div class="ok-label">⚠ Use sparingly</div>Herbal teas — watch for flavors that spike cravings</div>
+        <div class="ok-item caution"><div class="ok-label">⚠ Caution</div>Zero-cal sweeteners — may trigger insulin response</div>
+        <div class="ok-item warn"><div class="ok-label">✗ Avoid</div>Flavored drinks — taste = cravings = harder fast</div>
+        <div class="ok-item warn"><div class="ok-label">✗ Breaks fast</div>Anything with calories, cream, sugar, juice</div>
+      </div>
+      <div style="font-size:0.62rem;color:var(--text-muted);line-height:1.6;margin-top:0.75rem;padding:0.75rem;background:rgba(201,168,76,0.06);border-radius:8px;border-left:2px solid rgba(201,168,76,0.3);">
+        💡 <strong style="color:var(--gold2);">The flavor trap:</strong> The more flavorful something is, the more your brain wants more flavor. Keep drinks as plain as possible — your taste buds adapt fast and water starts tasting great within a day or two.
+      </div>
+    </div>
+
+    <!-- ENCOURAGEMENT -->
+    <div class="card encourage-card">
+      <div class="card-label">Your Mindset Anchors</div>
+      <div class="item">
+        <div class="item-icon">🪨</div>
+        <div class="item-text"><strong>Empty is progress.</strong> That hollow feeling in your stomach? That's your body switching fuel sources. It's working. You're winning right now.</div>
+      </div>
+      <div class="item">
+        <div class="item-icon">⏱</div>
+        <div class="item-text"><strong>Hunger only lasts ~2 hours.</strong> Ghrelin (the hunger hormone) comes in waves. Each wave peaks and disappears within about 2 hours. If you outlast it — you've beaten it. The next wave will be weaker.</div>
+      </div>
+      <div class="item">
+        <div class="item-icon">🌬️</div>
+        <div class="item-text"><strong>Feeling light is progress.</strong> As hours pass, that lightness isn't weakness — it's your body running lean and clean on fat. Athletes call this "metabolic freedom."</div>
+      </div>
+      <div class="item">
+        <div class="item-icon">🔋</div>
+        <div class="item-text"><strong>Want electrolytes.</strong> A pinch of salt, some potassium, and magnesium keep energy stable, stop headaches, and make fasting dramatically more comfortable. Don't skip them.</div>
+      </div>
+      <div class="item">
+        <div class="item-icon">🧠</div>
+        <div class="item-text"><strong>Mental clarity is coming.</strong> Around 16–24h, most people feel a wave of calm mental energy from ketones fueling the brain. If you feel foggy now, it passes — clarity is on the other side.</div>
+      </div>
+      <div class="item">
+        <div class="item-icon">🏆</div>
+        <div class="item-text"><strong>Every hour is a deposit.</strong> You don't have to commit to the whole fast. Just commit to the next hour. Stack hours. Each one is a deposit into your health account.</div>
+      </div>
+    </div>
+
+    <!-- CALCULATOR TOGGLE -->
+    <button class="calc-toggle-btn" id="calcToggleBtn" onclick="toggleCalc()">
+      <span>📊 Fat Loss Calculator</span>
+      <span id="calcArrow">▾</span>
+    </button>
+    <div class="calc-panel" id="calcPanel">
+      <div class="calc-grid">
+        <div class="dt-group">
+          <label>Weight (lbs)</label>
+          <input type="number" id="cWeight" placeholder="e.g. 185" min="50" max="600">
+        </div>
+        <div class="dt-group">
+          <label>Goal to Lose (lbs)</label>
+          <input type="number" id="cGoal" placeholder="e.g. 20" min="1" max="300">
+        </div>
+        <div class="dt-group">
+          <label>Age (optional)</label>
+          <input type="number" id="cAge" placeholder="e.g. 35" min="16" max="100">
+        </div>
+        <div class="dt-group">
+          <label>Gender (optional)</label>
+          <select id="cGender">
+            <option value="">— skip —</option>
+            <option value="m">Male</option>
+            <option value="f">Female</option>
+            <option value="o">Other</option>
+          </select>
+        </div>
+        <div class="dt-group">
+          <label>Activity Level</label>
+          <select id="cActivity">
+            <option value="">— skip —</option>
+            <option value="1.2">Sedentary</option>
+            <option value="1.375">Light (1-3x/wk)</option>
+            <option value="1.55">Moderate (3-5x/wk)</option>
+            <option value="1.725">Active (6-7x/wk)</option>
+          </select>
+        </div>
+        <div class="dt-group">
+          <label>Fast Duration Target (hrs)</label>
+          <input type="number" id="cFastHrs" placeholder="e.g. 24" min="4" max="120">
+        </div>
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="runCalc()">Calculate</button>
+      <div class="calc-result" id="calcResult" style="display:none;"></div>
+    </div>
+
+    <div style="height:1rem;"></div>
+  </div><!-- end scroll-content -->
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" onclick="showTab('main')">
+      <span class="nav-icon">⏱</span>Fast
+    </button>
+    <button class="nav-btn" onclick="showTab('stages')">
+      <span class="nav-icon">🔬</span>Stages
+    </button>
+    <button class="nav-btn" onclick="showTab('settings')">
+      <span class="nav-icon">⚙️</span>Settings
+    </button>
+  </div>
+</div><!-- end mainView -->
+
+<!-- ==================== STAGE DETAIL VIEW ==================== -->
+<div class="view" id="stageView">
+  <div class="stage-nav">
+    <button class="stage-nav-btn" id="stagePrevBtn" onclick="changeStage(-1)">‹ Prev</button>
+    <div class="stage-counter" id="stageCounter">1 / 8</div>
+    <button class="stage-nav-btn" id="stageNextBtn" onclick="changeStage(1)">Next ›</button>
+  </div>
+  <div class="stage-detail-scroll">
+    <div class="stage-status-banner" id="stageStatusBanner"></div>
+    <div class="stage-detail-icon" id="sdIcon"></div>
+    <div class="stage-detail-name" id="sdName"></div>
+    <div class="stage-detail-time" id="sdTime"></div>
+    <div class="stage-detail-body" id="sdBody"></div>
+    <div class="stage-detail-highlights" id="sdHighlights"></div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-btn" onclick="closeStageView()">
+      <span class="nav-icon">←</span>Back
+    </button>
+    <div class="stage-counter" id="stageCounter2" style="color:var(--text-muted);font-size:0.65rem;"></div>
+    <button class="nav-btn" onclick="showTab('main')">
+      <span class="nav-icon">⏱</span>Timer
+    </button>
+  </div>
+</div>
+
+<!-- ==================== SETTINGS VIEW ==================== -->
+<div class="view" id="settingsView">
+  <div class="app-header">
+    <div class="app-title" style="font-size:1.4rem;">Settings</div>
+  </div>
+  <div class="scroll-content">
+    <div class="card">
+      <div class="card-label">Water Goal</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Daily Water Goal</div>
+          <div class="settings-sub">With electrolytes, 100 oz+ is fine</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <input type="number" id="settingWaterGoal" placeholder="80" style="width:70px;" min="20" max="300">
+          <span style="font-size:0.65rem;color:var(--text-muted);" id="settingWaterUnit">oz</span>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Electrolyte Mode</div>
+          <div class="settings-sub">Increases water goal threshold</div>
+        </div>
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+          <input type="checkbox" id="settingElectrolytes" onchange="saveSettings()">
+          <span style="font-size:0.65rem;color:var(--text-muted);">On</span>
+        </label>
+      </div>
+      <button class="btn-primary btn-sm" onclick="saveSettings()" style="margin-top:0.5rem;">Save Goal</button>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Fasting Default</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Digestive Delay</div>
+          <div class="settings-sub">Hours after eating before true fast starts</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <input type="number" id="settingDelay" value="8" min="4" max="12" style="width:60px;">
+          <span style="font-size:0.65rem;color:var(--text-muted);">hrs</span>
+        </div>
+      </div>
+      <button class="btn-primary btn-sm" onclick="saveSettings()" style="margin-top:0.5rem;">Save</button>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Data</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Clear all fast data</div>
+          <div class="settings-sub">Resets timer and history</div>
+        </div>
+        <button class="btn-danger btn-sm" onclick="clearAll()">Clear</button>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-btn" onclick="showTab('main')"><span class="nav-icon">⏱</span>Fast</button>
+    <button class="nav-btn" onclick="showTab('stages')"><span class="nav-icon">🔬</span>Stages</button>
+    <button class="nav-btn active"><span class="nav-icon">⚙️</span>Settings</button>
+  </div>
+</div>
+
+<!-- ==================== STAGES LIST VIEW ==================== -->
+<div class="view" id="stagesListView">
+  <div class="app-header">
+    <div class="app-title" style="font-size:1.4rem;">Body Stages</div>
+  </div>
+  <div class="scroll-content" id="stagesListScroll"></div>
+  <div class="bottom-nav">
+    <button class="nav-btn" onclick="showTab('main')"><span class="nav-icon">⏱</span>Fast</button>
+    <button class="nav-btn active"><span class="nav-icon">🔬</span>Stages</button>
+    <button class="nav-btn" onclick="showTab('settings')"><span class="nav-icon">⚙️</span>Settings</button>
+  </div>
+</div>
+
+<script>
+// ===================================
+// FASTING STAGES
+// ===================================
+const STAGES = [
+  {
+    id:'fed', name:'Fed State', icon:'🍽️', start:0, end:4,
+    body:'Your body is actively digesting and absorbing nutrients from your last meal. Blood glucose is elevated and insulin is high, directing cells to take in glucose for energy and signaling the liver to store excess as glycogen. Fat burning is essentially off — your metabolism is running entirely on dietary carbohydrates and fats from the meal.',
+    highlights:[
+      'Insulin at highest point — fat cells are in storage mode',
+      'Blood glucose gradually rises then falls over 2-4 hours',
+      'Digestive enzymes and gut motility are at peak activity',
+      'No autophagy or fat oxidation occurring yet'
+    ]
+  },
+  {
+    id:'postabs', name:'Post-Absorptive', icon:'⚡', start:4, end:8,
+    body:'Digestion is winding down. Your small intestine has finished absorbing most nutrients. Insulin begins to fall as blood glucose normalizes. The liver starts releasing stored glycogen back into the bloodstream to keep blood sugar stable. At the tail end of this window, your body tentatively begins breaking down fat at the edges — but glycogen is still the primary fuel.',
+    highlights:[
+      'Insulin falling — the key that unlocks fat burning',
+      'Liver glycogen (your sugar reserves) being released',
+      'Glucagon rises to oppose insulin and release stored energy',
+      'Mild fat oxidation beginning at the periphery'
+    ]
+  },
+  {
+    id:'glycogen', name:'Glycogen Depletion', icon:'🔋', start:8, end:12,
+    body:'This is the transition zone — the window where your body genuinely switches gears. Liver glycogen stores are being actively depleted. Growth hormone is beginning to rise, protecting your muscle tissue. Your metabolism is pivoting toward fat as the primary fuel. This is where the fast truly begins physiologically — which is why the 8-hour post-meal window matters so much.',
+    highlights:[
+      'Liver glycogen nearly empty by end of this window',
+      'Growth hormone rising — muscle sparing begins',
+      'Fatty acids increasingly released from fat tissue',
+      'Blood sugar stabilizes at a healthy low baseline level',
+      'Mild ketone production beginning in the liver'
+    ]
+  },
+  {
+    id:'fatburn', name:'Fat Burning', icon:'🔥', start:12, end:18,
+    body:'Significant fat oxidation is now underway. Fatty acids are flooding the bloodstream and being converted by the liver into ketone bodies. Norepinephrine (a fat-mobilizing hormone) rises, which can actually slightly increase metabolic rate — the opposite of what many fear. Many people feel a calm, sustainable energy at this point and notice their hunger waves becoming shorter and easier to outlast.',
+    highlights:[
+      'Primary fuel is now fat — fat cells actively releasing fatty acids',
+      'Norepinephrine up: metabolism stable or slightly elevated',
+      'Ketones becoming measurable in blood and urine',
+      'Hunger waves shorter and less intense than earlier',
+      'Mental clarity starting to improve for many people'
+    ]
+  },
+  {
+    id:'ketosis', name:'Early Ketosis', icon:'✨', start:18, end:24,
+    body:'Ketone bodies — primarily beta-hydroxybutyrate (BHB) and acetoacetate — are now at meaningful levels. Your brain is beginning the shift from glucose to ketones as its preferred fuel. This is where many people report a "second wind" — calm, steady mental energy without the ups and downs of glucose. Autophagy (cellular self-cleaning) is ramping up. Hunger paradoxically decreases for most people in this window.',
+    highlights:[
+      'Blood ketones measurable — brain fuel switching to BHB',
+      'Autophagy (cellular cleanup) is accelerating',
+      'Ghrelin (hunger hormone) waves become shorter and weaker',
+      'Many people feel unusually calm and focused',
+      'Inflammation markers beginning to decrease',
+      'Insulin at its lowest — maximum fat burning'
+    ]
+  },
+  {
+    id:'autophagy', name:'Peak Autophagy', icon:'🔬', start:24, end:36,
+    body:'Autophagy is now at high levels. Your cells are systematically breaking down and recycling damaged proteins, malfunctioning organelles, and cellular debris. This process — which earned Yoshinori Ohsumi the 2016 Nobel Prize in Medicine — is linked to reduced cancer risk, slower aging, improved immunity, and neurological health. Stem cell activity is enhanced. This is one of the most powerful biological processes that fasting unlocks.',
+    highlights:[
+      'Autophagy at peak — cells in active self-repair and cleanup mode',
+      '2016 Nobel Prize research validates this window\'s significance',
+      'Immune system begins resetting — old cells recycled',
+      'Stem cell production enhanced for repair and regeneration',
+      'Brain autophagy may clear damaged proteins linked to Alzheimer\'s',
+      'Significant reduction in systemic inflammation'
+    ]
+  },
+  {
+    id:'deep', name:'Deep Ketosis', icon:'🌙', start:36, end:48,
+    body:'You\'re in deep fasting territory. Ketone levels are high and stable. Growth hormone has surged dramatically (studies show up to 5× baseline), actively protecting and even building lean muscle mass despite the fast. Your immune system is undergoing significant renewal. Insulin sensitivity is at its highest — when you eat again, your cells will be exceptionally responsive to insulin, which has profound metabolic benefits.',
+    highlights:[
+      'Growth hormone 3–5× baseline — active muscle protection',
+      'Deep immune system reset and renewal underway',
+      'Insulin sensitivity at its peak',
+      'Ketones providing clean, stable brain fuel at full capacity',
+      'Electrolytes become important — ensure sodium/potassium/magnesium intake',
+      'Blood pressure and triglycerides measurably improved'
+    ]
+  },
+  {
+    id:'extended', name:'Extended Fast', icon:'🌌', start:48, end:999,
+    body:'Extended fasting territory. The benefits of the previous stages are all compounding. Stem cell regeneration is significantly elevated — your bone marrow is producing fresh immune cells at an accelerated rate. The gut gets a deep rest, potentially resetting microbiome composition. At this stage, electrolyte management is essential — sodium, potassium, and magnesium supplementation will maintain energy and prevent uncomfortable symptoms. Break this fast thoughtfully with easily digestible foods.',
+    highlights:[
+      'Stem cell regeneration at highest levels',
+      'Gut microbiome deep reset — potential flora improvements',
+      'Bone marrow producing fresh immune cells',
+      'CRITICAL: Supplement electrolytes — sodium, potassium, magnesium daily',
+      'Break fast carefully: bone broth, then small easily digestible meals',
+      'Some practitioners do this under medical supervision — listen to your body'
+    ]
+  }
+];
+
+const PROG_HOURS = [0,12,18,24,36,48];
+
+// ===================================
+// STATE
+// ===================================
+let fastStart = null;       // when they STOPPED eating
+let timerInterval = null;
+let currentStageIdx = 0;    // for stage detail view
+let waterOz = 0;
+let electrolytes = 0;
+let waterUnit = 'oz';       // 'oz' or 'ml'
+let settings = {
+  waterGoalOz: 80,
+  electrolytes: false,
+  digestiveDelay: 8
+};
+let lastWaterResetDate = '';
+
+// ===================================
+// PERSISTENCE
+// ===================================
+function save() {
+  const d = {
+    fastStart: fastStart ? fastStart.toISOString() : null,
+    waterOz, electrolytes, waterUnit,
+    lastWaterResetDate, settings,
+    bottleSize: document.getElementById('bottleSize').value
+  };
+  localStorage.setItem('fast_v2', JSON.stringify(d));
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem('fast_v2');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d.fastStart) fastStart = new Date(d.fastStart);
+    waterUnit = d.waterUnit || 'oz';
+    lastWaterResetDate = d.lastWaterResetDate || '';
+    if (d.settings) settings = Object.assign(settings, d.settings);
+
+    // Water reset check
+    const today = todayStr();
+    if (lastWaterResetDate !== today) {
+      waterOz = 0; electrolytes = 0;
+      lastWaterResetDate = today;
+    } else {
+      waterOz = d.waterOz || 0;
+      electrolytes = d.electrolytes || 0;
+    }
+
+    if (d.bottleSize) document.getElementById('bottleSize').value = d.bottleSize;
+  } catch(e) {}
+}
+
+function todayStr() {
+  return new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+}
+
+// ===================================
+// VIEWS / TABS
+// ===================================
+function showTab(tab) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  if (tab === 'main') {
+    document.getElementById('mainView').classList.add('active');
+  } else if (tab === 'stages') {
+    document.getElementById('stagesListView').classList.add('active');
+    renderStagesList();
+  } else if (tab === 'settings') {
+    document.getElementById('settingsView').classList.add('active');
+    loadSettingsUI();
+  }
+}
+
+function openStageView(idx) {
+  if (idx === undefined) {
+    // open to current stage
+    if (fastStart) {
+      const hrs = (Date.now() - fastStart.getTime()) / 3600000 - settings.digestiveDelay;
+      currentStageIdx = getStageIdx(Math.max(0, hrs));
+    } else {
+      currentStageIdx = 0;
+    }
+  } else {
+    currentStageIdx = idx;
+  }
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('stageView').classList.add('active');
+  renderStageDetail();
+}
+
+function closeStageView() {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('mainView').classList.add('active');
+}
+
+function changeStage(dir) {
+  currentStageIdx = Math.max(0, Math.min(STAGES.length-1, currentStageIdx + dir));
+  renderStageDetail();
+}
+
+function renderStageDetail() {
+  const s = STAGES[currentStageIdx];
+  document.getElementById('sdIcon').textContent = s.icon;
+  document.getElementById('sdName').textContent = s.name;
+  document.getElementById('sdTime').textContent = s.end === 999 ? `${s.start}+ hours` : `${s.start} – ${s.end} hours`;
+  document.getElementById('sdBody').textContent = s.body;
+  document.getElementById('stageCounter').textContent = `${currentStageIdx+1} / ${STAGES.length}`;
+  document.getElementById('stageCounter2').textContent = `${currentStageIdx+1} / ${STAGES.length}`;
+
+  document.getElementById('stagePrevBtn').disabled = currentStageIdx === 0;
+  document.getElementById('stageNextBtn').disabled = currentStageIdx === STAGES.length-1;
+
+  // highlights
+  const hl = document.getElementById('sdHighlights');
+  hl.innerHTML = s.highlights.map(h => `<div class="highlight-item">• ${h}</div>`).join('');
+
+  // status banner
+  const banner = document.getElementById('stageStatusBanner');
+  if (fastStart) {
+    const hrs = (Date.now() - fastStart.getTime()) / 3600000 - settings.digestiveDelay;
+    const cur = getStageIdx(Math.max(0,hrs));
+    if (cur === currentStageIdx) {
+      banner.textContent = '⬤ You are here right now';
+      banner.className = 'stage-status-banner now';
+    } else if (hrs >= s.start) {
+      banner.textContent = '✓ Completed';
+      banner.className = 'stage-status-banner done';
+    } else {
+      const hoursAway = s.start - Math.max(0,hrs);
+      banner.textContent = `${hoursAway.toFixed(1)}h away`;
+      banner.className = 'stage-status-banner upcoming';
+    }
+  } else {
+    banner.textContent = 'Start your fast to track progress';
+    banner.className = 'stage-status-banner upcoming';
+  }
+}
+
+function renderStagesList() {
+  const container = document.getElementById('stagesListScroll');
+  let currentIdx = 0;
+  let fastHrs = 0;
+  if (fastStart) {
+    fastHrs = Math.max(0, (Date.now() - fastStart.getTime())/3600000 - settings.digestiveDelay);
+    currentIdx = getStageIdx(fastHrs);
+  }
+
+  container.innerHTML = STAGES.map((s,i) => {
+    const reached = fastStart && fastHrs >= s.start;
+    const isCurrent = fastStart && i === currentIdx;
+    const timeLabel = s.end === 999 ? `${s.start}h+` : `${s.start}h – ${s.end}h`;
+    let badge = isCurrent ? '<span style="font-size:0.6rem;padding:0.2rem 0.5rem;border-radius:99px;background:rgba(201,168,76,0.15);color:var(--gold2);border:1px solid rgba(201,168,76,0.3);">Now</span>'
+      : reached ? '<span style="font-size:0.6rem;padding:0.2rem 0.5rem;border-radius:99px;background:rgba(126,184,122,0.15);color:var(--accent);border:1px solid rgba(126,184,122,0.3);">✓</span>'
+      : `<span style="font-size:0.6rem;padding:0.2rem 0.5rem;border-radius:99px;background:rgba(42,51,38,0.6);color:var(--text-muted);border:1px solid var(--border);">${s.start}h+</span>`;
+    const opacity = reached || !fastStart ? '1' : '0.4';
+    const bg = isCurrent ? 'rgba(126,184,122,0.04)' : 'transparent';
+    return `<div onclick="openStageView(${i})" style="display:flex;align-items:center;gap:0.75rem;padding:1rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;opacity:${opacity};background:${bg};transition:background 0.2s;">
+      <div style="font-size:1.4rem;flex-shrink:0;">${s.icon}</div>
+      <div style="flex:1;">
+        <div style="font-size:0.78rem;color:${isCurrent?'var(--accent2)':'var(--text)'};">${s.name}</div>
+        <div style="font-size:0.6rem;color:var(--gold);letter-spacing:0.06em;margin-top:0.15rem;">${timeLabel}</div>
+      </div>
+      ${badge}
+      <div style="color:var(--text-muted);font-size:0.9rem;">›</div>
+    </div>`;
+  }).join('');
+}
+
+// ===================================
+// FAST CONTROLS
+// ===================================
+function setNow() {
+  const now = new Date();
+  document.getElementById('startDate').value = now.toISOString().split('T')[0];
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('startTime').value = `${h}:${m}`;
+}
+
+function startFast() {
+  const dateVal = document.getElementById('startDate').value;
+  const timeVal = document.getElementById('startTime').value;
+  if (!dateVal || !timeVal) { alert('Please set a date and time.'); return; }
+  fastStart = new Date(`${dateVal}T${timeVal}`);
+  save();
+  startTicking();
+}
+
+function stopFast() {
+  if (fastStart && !confirm('End your current fast?')) return;
+  fastStart = null;
+  clearInterval(timerInterval); timerInterval = null;
+  save();
+  resetTimerUI();
+}
+
+function startTicking() {
+  if (timerInterval) clearInterval(timerInterval);
+  tick();
+  timerInterval = setInterval(tick, 1000);
+}
+
+function getStageIdx(hours) {
+  for (let i = STAGES.length-1; i >= 0; i--) {
+    if (hours >= STAGES[i].start) return i;
+  }
+  return 0;
+}
+
+function tick() {
+  if (!fastStart) return;
+
+  const now = Date.now();
+  const mealElapsed = now - fastStart.getTime();
+  const fastElapsed = mealElapsed - (settings.digestiveDelay * 3600000);
+  const isFasting = fastElapsed > 0;
+
+  // Display — show time since stopped eating, but note fast status
+  const showMs = mealElapsed;
+  const totalSec = Math.floor(showMs / 1000);
+  const hh = Math.floor(totalSec/3600);
+  const mm = Math.floor((totalSec%3600)/60);
+  const ss = totalSec%60;
+  const pad = n => String(n).padStart(2,'0');
+
+  document.getElementById('timerDisplay').textContent = `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
+  document.getElementById('timerDisplay').classList.remove('inactive');
+  document.getElementById('timerCard').classList.add('active');
+  document.getElementById('timerLabel').textContent = isFasting ? 'Fasting for' : 'Time since last meal';
+
+  if (isFasting) {
+    const fastHrs = fastElapsed/3600000;
+    const fh = Math.floor(fastHrs);
+    const fm = Math.floor((fastHrs%1)*60);
+    document.getElementById('fastNote').style.display = 'block';
+    document.getElementById('fastNote').textContent = `True fast time: ${fh}h ${pad(fm)}m`;
+  } else {
+    const hoursUntil = (settings.digestiveDelay - mealElapsed/3600000).toFixed(1);
+    document.getElementById('fastNote').style.display = 'block';
+    document.getElementById('fastNote').textContent = `Fasting begins in ~${hoursUntil}h`;
+  }
+
+  const opts = {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'};
+  document.getElementById('timerSub').textContent = `Stopped eating ${fastStart.toLocaleString('en-US',opts)}`;
+
+  // Stage
+  const fastHrs = Math.max(0, fastElapsed/3600000);
+  const stageIdx = getStageIdx(fastHrs);
+  const stage = STAGES[stageIdx];
+  const nextStage = STAGES[stageIdx+1];
+
+  document.getElementById('stageTapIcon').textContent = stage.icon;
+  document.getElementById('stageTapName').textContent = stage.name;
+  document.getElementById('stageTapTime').textContent = stage.end === 999 ? `${stage.start}h+` : `${stage.start}h – ${stage.end}h`;
+  document.getElementById('stageTapPreview').textContent = stage.body.substring(0,100) + '… Tap to read more →';
+
+  // Progress
+  const maxH = 48;
+  const pct = Math.min(100, (fastHrs/maxH)*100);
+  document.getElementById('progFill').style.width = pct + '%';
+
+  // Progress labels
+  const milestoneIds = ['pl0','pl12','pl18','pl24','pl36','pl48'];
+  PROG_HOURS.forEach((h,i) => {
+    const el = document.getElementById(milestoneIds[i]);
+    el.classList.toggle('reached', fastHrs >= h && isFasting);
+  });
+
+  // Date header
+  document.getElementById('headerDate').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+}
+
+function resetTimerUI() {
+  document.getElementById('timerDisplay').textContent = '00:00:00';
+  document.getElementById('timerDisplay').classList.add('inactive');
+  document.getElementById('timerCard').classList.remove('active');
+  document.getElementById('timerLabel').textContent = 'No active fast';
+  document.getElementById('timerSub').textContent = 'Tap "Start" below to begin';
+  document.getElementById('fastNote').style.display = 'none';
+  document.getElementById('stageTapIcon').textContent = '💤';
+  document.getElementById('stageTapName').textContent = 'Not fasting';
+  document.getElementById('stageTapTime').textContent = 'Start your fast to track stages';
+  document.getElementById('stageTapPreview').textContent = 'Tap to explore all body stages →';
+  document.getElementById('progFill').style.width = '0%';
+  ['pl0','pl12','pl18','pl24','pl36','pl48'].forEach(id => document.getElementById(id).classList.remove('reached'));
+}
+
+// ===================================
+// WATER
+// ===================================
+function setWaterUnit(u) {
+  waterUnit = u;
+  document.getElementById('toggleOz').classList.toggle('active', u==='oz');
+  document.getElementById('toggleMl').classList.toggle('active', u==='ml');
+  document.getElementById('bottleSizeUnit').textContent = u;
+  document.getElementById('settingWaterUnit').textContent = u;
+  // Update +8 button
+  document.getElementById('addEightBtn').textContent = u==='oz' ? '+8 oz' : '+250 ml';
+  updateBottleBtn();
+  updateWaterUI();
+  save();
+}
+
+function updateBottleBtn() {
+  const sz = parseFloat(document.getElementById('bottleSize').value)||16.9;
+  document.getElementById('bottleBtnLabel').textContent = `${sz} ${waterUnit}`;
+  document.getElementById('unitBtnLabel').textContent = waterUnit==='oz' ? 'oz' : 'ml';
+}
+
+function addBottle() {
+  const sz = parseFloat(document.getElementById('bottleSize').value)||16.9;
+  waterOz += sz;
+  ensureWaterResetCheck();
+  updateWaterUI(); save();
+}
+
+function addUnit(n) {
+  waterOz += n;
+  ensureWaterResetCheck();
+  updateWaterUI(); save();
+}
+
+function removeUnit() {
+  waterOz = Math.max(0, waterOz-1);
+  updateWaterUI(); save();
+}
+
+function resetWater() {
+  if (!confirm('Reset today\'s water?')) return;
+  waterOz = 0; electrolytes = 0;
+  updateWaterUI(); save();
+}
+
+function logElectrolyte() {
+  electrolytes++;
+  document.getElementById('elecCount').textContent = electrolytes;
+  save();
+}
+
+function ensureWaterResetCheck() {
+  const today = todayStr();
+  if (lastWaterResetDate !== today) {
+    waterOz = 0; electrolytes = 0;
+    lastWaterResetDate = today;
+  }
+}
+
+function updateWaterUI() {
+  const goal = settings.waterGoalOz;
+  const display = waterUnit==='oz' ? waterOz.toFixed(1) : (waterOz * 29.5735).toFixed(0);
+  const unit = waterUnit==='oz' ? 'oz today' : 'ml today';
+  const goalDisplay = waterUnit==='oz' ? `${goal} oz/day` : `${Math.round(goal*29.5735)} ml/day`;
+
+  document.getElementById('waterDisplay').textContent = display;
+  document.getElementById('waterUnit').textContent = unit;
+  document.getElementById('waterGoalLine').textContent = `Goal: ${goalDisplay}`;
+  document.getElementById('wBarGoal').textContent = waterUnit==='oz' ? `${goal}oz` : `${Math.round(goal*29.5735)}ml`;
+  document.getElementById('wBarMid').textContent = waterUnit==='oz' ? `${Math.round(goal/2)}oz` : `${Math.round(goal*29.5735/2)}ml`;
+
+  // Bar color and percent
+  const pct = Math.min(120, (waterOz/goal)*100);
+  const fill = document.getElementById('waterBarFill');
+
+  let color;
+  if (waterOz < goal * 0.3) color = 'var(--danger)';
+  else if (waterOz < goal * 0.6) color = 'var(--orange)';
+  else if (waterOz < goal * 0.9) color = 'var(--blue)';
+  else if (waterOz <= goal * 1.15) color = 'var(--blue2)'; // good zone
+  else color = 'var(--orange)'; // too much
+
+  fill.style.width = Math.min(100, pct) + '%';
+  fill.style.background = color;
+
+  document.getElementById('elecCount').textContent = electrolytes;
+  updateBottleBtn();
+}
+
+// ===================================
+// CALCULATOR
+// ===================================
+function toggleCalc() {
+  const btn = document.getElementById('calcToggleBtn');
+  const panel = document.getElementById('calcPanel');
+  const open = panel.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  document.getElementById('calcArrow').textContent = open ? '▴' : '▾';
+}
+
+function runCalc() {
+  const weight = parseFloat(document.getElementById('cWeight').value);
+  const goal = parseFloat(document.getElementById('cGoal').value);
+  const age = parseFloat(document.getElementById('cAge').value)||null;
+  const gender = document.getElementById('cGender').value||null;
+  const activity = parseFloat(document.getElementById('cActivity').value)||null;
+  const fastHrs = parseFloat(document.getElementById('cFastHrs').value)||null;
+
+  const result = document.getElementById('calcResult');
+  result.style.display = 'block';
+
+  let rows = [];
+
+  // Fat loss basics — 1 lb fat ≈ 3,500 kcal
+  if (goal) {
+    const calsToLose = goal * 3500;
+    rows.push(['Fat to lose', `${goal} lbs`, '']);
+
+    // Estimate calories burned during fast
+    if (fastHrs) {
+      // Rough BMR calculation
+      let bmr = null;
+      if (weight && age && gender === 'm') bmr = 88.362 + (13.397 * weight/2.205) + (4.799 * 170) - (5.677 * age);
+      else if (weight && age && gender === 'f') bmr = 447.593 + (9.247 * weight/2.205) + (3.098 * 160) - (4.330 * age);
+      else if (weight) bmr = 10 * (weight/2.205) + 6.25*170 - 5*35; // rough gender-neutral
+
+      const tdee = bmr && activity ? bmr * activity : (weight ? weight * 14 : null);
+      const perHour = tdee ? tdee/24 : null;
+      const fastCals = perHour ? Math.round(perHour * fastHrs) : null;
+
+      if (fastCals) {
+        const fatFromFast = (fastCals/3500).toFixed(2);
+        // During deep fasting, ~70-80% of energy from fat
+        const fatPct = fastHrs >= 16 ? 0.78 : fastHrs >= 8 ? 0.55 : 0.3;
+        const fatLbsFromFast = (fastCals * fatPct / 3500).toFixed(3);
+        rows.push([`Cals burned (${fastHrs}h fast)`, `~${fastCals} kcal`, '']);
+        rows.push(['Fat burned this fast', `~${fatLbsFromFast} lbs`, `(~${(fatLbsFromFast*453.6).toFixed(0)}g)`]);
+        rows.push(['Fasts needed for goal', `~${Math.ceil(goal/fatLbsFromFast)}`, `at ${fastHrs}h each`]);
+      }
+    }
+
+    if (weight) {
+      // Water weight — first few days can shed 2–5 lbs water
+      rows.push(['Est. water weight (early)', '2–5 lbs', 'first 3–7 days']);
+      // Daily deficit needed
+      rows.push(['Caloric deficit needed', `${calsToLose.toLocaleString()} kcal total`, `to lose ${goal} lbs`]);
+    }
+  }
+
+  // Daily water recommendation
+  if (weight) {
+    const ozPerLb = settings.electrolytes ? 0.67 : 0.55;
+    const recOz = Math.round(weight * ozPerLb);
+    rows.push(['Rec. daily water', `${recOz} oz / ${Math.round(recOz*29.5/100)*100} ml`, settings.electrolytes ? 'w/ electrolytes' : 'base rate']);
+  }
+
+  if (rows.length === 0) {
+    result.innerHTML = '<div style="font-size:0.68rem;color:var(--text-muted);">Enter at least a goal weight to see estimates.</div>';
+    return;
+  }
+
+  result.innerHTML = `
+    <div style="font-size:0.58rem;color:var(--text-muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.5rem;">Estimates</div>
+    ${rows.map(([label,val,sub]) => `
+      <div class="calc-result-row">
+        <span class="calc-result-label">${label}${sub?'<br><span style="font-size:0.55rem;opacity:0.7;">'+sub+'</span>':''}</span>
+        <span class="calc-result-val">${val}</span>
+      </div>`).join('')}
+    <div style="font-size:0.58rem;color:var(--text-muted);margin-top:0.75rem;line-height:1.6;">
+      ⚠ Estimates only. Individual metabolism varies. These numbers are educational guides, not medical advice.
+    </div>`;
+}
+
+// ===================================
+// SETTINGS
+// ===================================
+function loadSettingsUI() {
+  document.getElementById('settingWaterGoal').value = settings.waterGoalOz;
+  document.getElementById('settingElectrolytes').checked = settings.electrolytes;
+  document.getElementById('settingDelay').value = settings.digestiveDelay;
+  document.getElementById('settingWaterUnit').textContent = waterUnit;
+}
+
+function saveSettings() {
+  const goalVal = parseFloat(document.getElementById('settingWaterGoal').value);
+  if (goalVal) settings.waterGoalOz = goalVal;
+  settings.electrolytes = document.getElementById('settingElectrolytes').checked;
+  const delay = parseFloat(document.getElementById('settingDelay').value);
+  if (delay) settings.digestiveDelay = delay;
+  save();
+  updateWaterUI();
+  alert('Settings saved!');
+}
+
+function clearAll() {
+  if (!confirm('Clear all data?')) return;
+  localStorage.removeItem('fast_v2');
+  location.reload();
+}
+
+// ===================================
+// INIT
+// ===================================
+function init() {
+  load();
+  setNow();
+  setWaterUnit(waterUnit);
+  updateWaterUI();
+  renderStagesList();
+  document.getElementById('headerDate').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+
+  // Listen to bottle size changes
+  document.getElementById('bottleSize').addEventListener('input', () => {
+    updateBottleBtn(); save();
+  });
+
+  if (fastStart) startTicking();
+  else resetTimerUI();
+}
+
+init();
+</script>
+</body>
+</html>
