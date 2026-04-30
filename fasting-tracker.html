@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast — Educational Fasting Simulator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0c0f0a; --surface:#141810; --surface2:#1c221a; --border:#2a3326;
+  --accent:#7eb87a; --accent2:#b5d4b1; --gold:#c9a84c; --gold2:#e8cc80;
+  --text:#d8e4d5; --muted:#7a9175; --danger:#c46a5a; --danger2:#e07060;
+  --warn:#d4894a; --warn2:#f0a060; --blue:#78b4d4; --glow:rgba(126,184,122,0.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:100;opacity:0.6;}
+
+header{width:100%;max-width:700px;padding:1.25rem 1.5rem 0;display:flex;align-items:baseline;gap:0.75rem;}
+h1{font-family:'DM Serif Display',serif;font-size:1.9rem;letter-spacing:-0.02em;color:var(--accent2);}
+h1 span{font-style:italic;color:var(--accent);}
+.tagline{font-size:0.6rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;}
+
+.top-bar{width:100%;max-width:700px;padding:0.6rem 1.5rem 0;display:flex;gap:0.4rem;flex-wrap:wrap;}
+.tb-btn{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.07em;text-transform:uppercase;border:none;border-radius:7px;padding:0.45rem 0.75rem;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.tb-start{background:var(--accent);color:#0c0f0a;font-weight:500;}
+.tb-start:hover{background:var(--accent2);transform:translateY(-1px);}
+.tb-stop{background:transparent;color:var(--danger);border:1px solid rgba(196,106,90,0.4);}
+.tb-stop:hover{background:rgba(196,106,90,0.1);transform:translateY(-1px);}
+.tb-water{background:var(--surface2);color:var(--blue);border:1px solid rgba(120,180,212,0.3);}
+.tb-water:hover{background:rgba(120,180,212,0.1);transform:translateY(-1px);}
+.tb-elytes{background:var(--surface2);color:var(--gold);border:1px solid rgba(201,168,76,0.3);}
+.tb-elytes:hover{background:rgba(201,168,76,0.1);transform:translateY(-1px);}
+.tb-settings{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.tb-settings:hover{color:var(--text);border-color:var(--accent);}
+
+.tab-nav{width:100%;max-width:700px;padding:0.9rem 1.5rem 0;display:flex;gap:0.2rem;border-bottom:1px solid var(--border);}
+.tab-btn{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;background:none;border:none;color:var(--muted);padding:0.55rem 0.8rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s;}
+.tab-btn.active{color:var(--accent2);border-bottom-color:var(--accent);}
+.tab-btn:hover:not(.active){color:var(--text);}
+
+main{width:100%;max-width:700px;padding:1.1rem 1.5rem 2rem;display:flex;flex-direction:column;gap:0.9rem;}
+.tab-panel{display:none;flex-direction:column;gap:0.9rem;}
+.tab-panel.active{display:flex;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem;}
+.card-title{font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:0.85rem;}
+
+/* TIMER */
+.timer-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.75rem;text-align:center;position:relative;overflow:hidden;}
+.timer-card::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:200px;height:200px;background:radial-gradient(circle,var(--glow) 0%,transparent 70%);pointer-events:none;transition:opacity 0.5s;}
+.timer-card.active::before{opacity:1;} .timer-card:not(.active)::before{opacity:0;}
+.timer-label{font-size:0.6rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:0.6rem;}
+.timer-display{font-family:'DM Serif Display',serif;font-size:clamp(2.6rem,9vw,4.2rem);letter-spacing:0.04em;color:var(--accent2);line-height:1;margin-bottom:0.4rem;transition:color 0.5s;}
+.timer-display.inactive{color:var(--muted);}
+.timer-sub{font-size:0.65rem;color:var(--muted);letter-spacing:0.07em;}
+
+.stage-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem;}
+.stage-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;}
+.stage-name{font-family:'DM Serif Display',serif;font-size:1.15rem;color:var(--gold2);}
+.stage-hrs{font-size:0.6rem;color:var(--muted);letter-spacing:0.1em;}
+.stage-desc{font-size:0.68rem;color:var(--muted);line-height:1.7;margin-bottom:0.65rem;}
+.stage-warning{font-size:0.65rem;line-height:1.6;border-radius:7px;padding:0.55rem 0.8rem;margin-bottom:0.8rem;display:none;}
+.stage-warning.show{display:block;}
+.stage-warning.caution{color:var(--warn2);background:rgba(212,137,74,0.07);border:1px solid rgba(212,137,74,0.22);}
+.stage-warning.danger{color:var(--danger2);background:rgba(196,106,90,0.07);border:1px solid rgba(196,106,90,0.25);}
+.progress-track{height:5px;background:var(--surface2);border-radius:99px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent) 0%,var(--gold) 100%);border-radius:99px;transition:width 1s ease;}
+.milestones{display:flex;justify-content:space-between;margin-top:0.35rem;}
+.ms-dot{font-size:0.53rem;color:var(--muted);flex:1;text-align:center;}
+.ms-dot.reached{color:var(--accent);}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.65rem;}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:0.85rem;text-align:center;}
+.stat-val{font-family:'DM Serif Display',serif;font-size:1.45rem;color:var(--gold2);line-height:1;}
+.stat-lbl{font-size:0.53rem;color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-top:0.25rem;}
+
+.stages-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.stages-ttl{padding:0.85rem 1.25rem 0.65rem;font-size:0.6rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.stage-row{border-bottom:1px solid var(--border);opacity:0.42;transition:background 0.2s;}
+.stage-row:last-child{border-bottom:none;} .stage-row.reached{opacity:1;} .stage-row.current{opacity:1;background:rgba(126,184,122,0.04);}
+.stage-row-inner{display:flex;align-items:flex-start;gap:0.85rem;padding:0.9rem 1.25rem;}
+.s-icon{font-size:1.05rem;line-height:1.4;flex-shrink:0;} .s-info{flex:1;}
+.s-name{font-size:0.75rem;font-weight:500;color:var(--text);margin-bottom:0.18rem;}
+.stage-row.current .s-name{color:var(--accent2);}
+.s-time{font-size:0.58rem;color:var(--gold);letter-spacing:0.06em;margin-bottom:0.22rem;}
+.s-body{font-size:0.63rem;color:var(--muted);line-height:1.6;}
+.s-warn{font-size:0.61rem;line-height:1.55;margin-top:0.35rem;padding-top:0.35rem;border-top:1px solid rgba(212,137,74,0.2);display:none;}
+.s-warn.caution{color:var(--warn2);} .s-warn.danger{color:var(--danger2);border-top-color:rgba(196,106,90,0.2);}
+.stage-row.reached .s-warn,.stage-row.current .s-warn{display:block;}
+.s-badge{font-size:0.56rem;padding:0.16rem 0.42rem;border-radius:99px;letter-spacing:0.07em;flex-shrink:0;align-self:flex-start;margin-top:0.08rem;}
+.s-badge.done{background:rgba(126,184,122,0.15);color:var(--accent);border:1px solid rgba(126,184,122,0.3);}
+.s-badge.now{background:rgba(201,168,76,0.15);color:var(--gold2);border:1px solid rgba(201,168,76,0.3);}
+.s-badge.upcoming{background:rgba(42,51,38,0.6);color:var(--muted);border:1px solid var(--border);}
+
+/* BREAKS */
+.info-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.breaks-sec-hdr{padding:0.7rem 1.2rem;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;border-bottom:1px solid var(--border);}
+.break-item{display:flex;gap:0.8rem;padding:0.8rem 1.2rem;border-bottom:1px solid var(--border);align-items:flex-start;}
+.break-item:last-child{border-bottom:none;}
+.bi-icon{font-size:0.95rem;flex-shrink:0;margin-top:0.08rem;}
+.bi-name{font-size:0.72rem;color:var(--text);margin-bottom:0.18rem;font-weight:500;}
+.bi-why{font-size:0.61rem;color:var(--muted);line-height:1.6;}
+
+/* ── GAME TAB ── */
+.game-hero{background:linear-gradient(135deg,#141810 0%,#1a2014 100%);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:relative;overflow:hidden;}
+.game-hero::before{content:'';position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:200px;height:160px;background:radial-gradient(circle,rgba(201,168,76,0.1) 0%,transparent 70%);pointer-events:none;}
+.game-hero-left{}
+.g-score-lbl{font-size:0.56rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:0.2rem;}
+.g-score{font-family:'DM Serif Display',serif;font-size:3rem;color:var(--gold2);line-height:1;}
+.g-mult{font-size:0.6rem;color:var(--accent);margin-top:0.2rem;}
+.game-hero-right{text-align:right;}
+.g-round-badge{display:inline-block;font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:99px;padding:0.2rem 0.7rem;margin-bottom:0.35rem;}
+.g-day-badge{display:block;font-size:0.58rem;color:var(--muted);margin-top:0.15rem;}
+
+/* Game action bar */
+.game-action-bar{display:flex;gap:0.4rem;flex-wrap:wrap;}
+.gab-btn{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.07em;text-transform:uppercase;border:none;border-radius:7px;padding:0.42rem 0.7rem;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.gab-water{background:var(--surface2);color:var(--blue);border:1px solid rgba(120,180,212,0.3);}
+.gab-water:hover{background:rgba(120,180,212,0.1);}
+.gab-elytes{background:var(--surface2);color:var(--gold);border:1px solid rgba(201,168,76,0.3);}
+.gab-elytes:hover{background:rgba(201,168,76,0.1);}
+.gab-hungry{background:var(--surface2);color:var(--warn2);border:1px solid rgba(212,137,74,0.3);}
+.gab-hungry:hover{background:rgba(212,137,74,0.08);}
+.gab-checkin{background:var(--surface2);color:var(--accent);border:1px solid rgba(126,184,122,0.3);}
+.gab-checkin:hover{background:rgba(126,184,122,0.08);}
+
+/* Day log — sequential timeline */
+.day-log{display:flex;flex-direction:column;gap:0.35rem;}
+.log-entry{display:flex;align-items:center;gap:0.65rem;padding:0.55rem 0.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:0.65rem;}
+.log-entry-time{font-size:0.56rem;color:var(--muted);flex-shrink:0;min-width:42px;}
+.log-entry-icon{flex-shrink:0;font-size:0.85rem;}
+.log-entry-label{flex:1;color:var(--text);}
+.log-entry-pts{font-size:0.6rem;font-weight:500;flex-shrink:0;}
+.log-pts-pos{color:var(--accent);} .log-pts-neg{color:var(--danger);} .log-pts-zero{color:var(--muted);}
+.log-entry.checkin-entry{border-color:rgba(126,184,122,0.2);background:rgba(126,184,122,0.04);}
+.log-entry.water-entry{border-color:rgba(120,180,212,0.2);}
+.log-entry.elyte-entry{border-color:rgba(201,168,76,0.2);}
+.log-entry.hungry-entry{border-color:rgba(212,137,74,0.2);}
+.log-entry.milestone-entry{border-color:rgba(201,168,76,0.25);background:rgba(201,168,76,0.04);}
+.log-entry.penalty-entry{border-color:rgba(196,106,90,0.25);background:rgba(196,106,90,0.04);}
+
+/* Structured objective items (non-sequential) */
+.obj-section{display:flex;flex-direction:column;gap:0.45rem;}
+.obj-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.obj-card-header{padding:0.65rem 0.9rem;font-size:0.62rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;border-bottom:1px solid var(--border);}
+.obj-card-body{padding:0.75rem 0.9rem;}
+
+/* Workout selector */
+.workout-opts{display:flex;gap:0.4rem;margin-top:0.5rem;}
+.w-opt{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.06em;text-transform:uppercase;border:1px solid var(--border);border-radius:6px;padding:0.38rem 0.65rem;cursor:pointer;background:var(--surface);color:var(--muted);transition:all 0.2s;}
+.w-opt:hover{border-color:var(--accent);color:var(--text);}
+.w-opt.selected-light{background:rgba(126,184,122,0.15);border-color:var(--accent);color:var(--accent2);}
+.w-opt.selected-heavy{background:rgba(196,106,90,0.12);border-color:var(--danger);color:var(--danger2);}
+.w-opt.selected-none{background:var(--surface2);border-color:var(--border);color:var(--muted);}
+
+/* Sleep input */
+.sleep-input-row{display:flex;align-items:center;gap:0.65rem;margin-top:0.5rem;}
+.sleep-hrs-input{width:60px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.9rem;padding:0.35rem 0.55rem;outline:none;text-align:center;color-scheme:dark;}
+.sleep-hrs-input:focus{border-color:var(--accent);}
+.sleep-submit{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.07em;text-transform:uppercase;background:var(--accent);color:#0c0f0a;border:none;border-radius:6px;padding:0.4rem 0.75rem;cursor:pointer;transition:all 0.2s;}
+.sleep-submit:hover{background:var(--accent2);}
+.sleep-quality-opts{display:flex;gap:0.4rem;margin-top:0.45rem;flex-wrap:wrap;}
+.sq-opt{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.06em;text-transform:uppercase;border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.6rem;cursor:pointer;background:var(--surface);color:var(--muted);transition:all 0.2s;display:none;}
+.sq-opt.visible{display:block;}
+.sq-opt:hover{border-color:var(--accent);}
+.sq-opt.sel-good{background:rgba(126,184,122,0.15);border-color:var(--accent);color:var(--accent2);}
+.sq-opt.sel-bad{background:rgba(212,137,74,0.1);border-color:var(--warn2);color:var(--warn2);}
+
+/* Break fast section */
+.break-fast-opts{display:flex;flex-direction:column;gap:0.45rem;}
+.bf-opt{display:flex;align-items:center;gap:0.65rem;padding:0.65rem 0.9rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;}
+.bf-opt:hover{border-color:var(--accent);}
+.bf-opt-icon{font-size:1rem;flex-shrink:0;}
+.bf-opt-label{flex:1;font-size:0.7rem;color:var(--text);}
+.bf-opt-pts{font-size:0.62rem;font-weight:500;}
+
+/* Round control */
+.round-ctrl-btns{display:flex;flex-direction:column;gap:0.45rem;}
+.g-btn{font-family:'DM Mono',monospace;font-size:0.62rem;letter-spacing:0.09em;text-transform:uppercase;border:none;border-radius:8px;padding:0.62rem 1rem;cursor:pointer;transition:all 0.2s;width:100%;}
+.g-btn-primary{background:var(--gold);color:#0c0f0a;font-weight:500;}
+.g-btn-primary:hover{background:var(--gold2);transform:translateY(-1px);}
+.g-btn-round2{background:rgba(126,184,122,0.15);color:var(--accent2);border:1px solid rgba(126,184,122,0.4);}
+.g-btn-round2:hover{background:rgba(126,184,122,0.25);}
+.g-btn-sec{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.g-btn-sec:hover{color:var(--text);border-color:var(--accent);}
+.g-btn-danger{background:transparent;color:var(--danger);border:1px solid rgba(196,106,90,0.4);}
+.g-btn-danger:hover{background:rgba(196,106,90,0.1);}
+.g-btn-endday{background:rgba(201,168,76,0.12);color:var(--gold);border:1px solid rgba(201,168,76,0.35);}
+.g-btn-endday:hover{background:rgba(201,168,76,0.2);}
+
+/* Day header in log */
+.day-header{display:flex;align-items:center;gap:0.65rem;padding:0.5rem 0;margin:0.2rem 0;}
+.day-header-line{flex:1;height:1px;background:var(--border);}
+.day-header-label{font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);}
+.day-header-label.round2{color:var(--accent);}
+
+/* Game history */
+.hist-item{background:var(--surface2);border:1px solid var(--border);border-radius:9px;overflow:hidden;margin-bottom:0.45rem;}
+.hist-summary{display:flex;justify-content:space-between;align-items:center;padding:0.8rem 0.95rem;cursor:pointer;}
+.hist-title{font-size:0.7rem;color:var(--text);}
+.hist-score{font-family:'DM Serif Display',serif;font-size:1.25rem;color:var(--gold2);}
+.hist-date{font-size:0.56rem;color:var(--muted);margin-top:0.12rem;}
+.hist-detail{display:none;border-top:1px solid var(--border);padding:0.8rem 0.95rem;}
+.hist-detail.open{display:block;}
+.hist-line{display:flex;justify-content:space-between;font-size:0.61rem;color:var(--muted);padding:0.18rem 0;}
+.hist-line.pos{color:var(--accent);} .hist-line.neg{color:var(--danger);}
+.hist-feelings-summary{margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid var(--border);}
+.hist-feelings-title{font-size:0.56rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.35rem;}
+.feelings-cloud{display:flex;flex-wrap:wrap;gap:0.3rem;}
+.feeling-chip{font-size:0.56rem;padding:0.15rem 0.45rem;border-radius:99px;background:var(--surface);border:1px solid var(--border);color:var(--muted);}
+.feeling-chip.reported{background:rgba(126,184,122,0.1);border-color:rgba(126,184,122,0.3);color:var(--accent2);}
+
+/* Check-in modal feelings grid */
+.feelings-grid{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.6rem;}
+.feel-btn{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.05em;border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.6rem;cursor:pointer;background:var(--surface2);color:var(--muted);transition:all 0.2s;}
+.feel-btn:hover{border-color:var(--accent);color:var(--text);}
+.feel-btn.selected{background:rgba(126,184,122,0.15);border-color:var(--accent);color:var(--accent2);}
+
+/* Settings */
+.s-group-title{font-size:0.58rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);padding-bottom:0.35rem;border-bottom:1px solid var(--border);margin-bottom:0.6rem;}
+.s-group{display:flex;flex-direction:column;gap:0.55rem;}
+.s-row{display:flex;justify-content:space-between;align-items:center;gap:0.75rem;}
+.s-lbl{font-size:0.68rem;color:var(--text);} .s-note{font-size:0.58rem;color:var(--muted);margin-top:0.08rem;}
+.toggle{width:34px;height:19px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;}
+.toggle.on{background:var(--accent);border-color:var(--accent);}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;background:#0c0f0a;border-radius:50%;transition:transform 0.2s;}
+.toggle.on::after{transform:translateX(15px);}
+.s-num{width:68px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.72rem;padding:0.32rem 0.55rem;outline:none;text-align:right;color-scheme:dark;}
+.s-num:focus{border-color:var(--accent);}
+.s-sel{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.68rem;padding:0.32rem 0.55rem;outline:none;cursor:pointer;color-scheme:dark;}
+.s-sel:focus{border-color:var(--accent);}
+.export-btn{font-family:'DM Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;background:var(--surface2);color:var(--accent);border:1px solid rgba(126,184,122,0.3);border-radius:8px;padding:0.58rem 0.9rem;cursor:pointer;transition:all 0.2s;width:100%;margin-top:0.5rem;}
+.export-btn:hover{background:rgba(126,184,122,0.1);}
+
+/* Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:200;display:none;align-items:center;justify-content:center;padding:1rem;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.6rem;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;animation:slideUp 0.22s ease;}
+@keyframes slideUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.modal-title{font-family:'DM Serif Display',serif;font-size:1.35rem;color:var(--accent2);margin-bottom:0.25rem;}
+.modal-sub{font-size:0.65rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.6;}
+.m-field{margin-bottom:0.9rem;}
+.m-field label{display:block;font-size:0.58rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.3rem;}
+.m-field-note{font-size:0.58rem;color:var(--muted);margin-top:0.28rem;line-height:1.5;}
+.m-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:0.78rem;padding:0.6rem 0.8rem;outline:none;transition:border-color 0.2s;color-scheme:dark;}
+.m-input:focus{border-color:var(--accent);}
+.m-row{display:flex;gap:0.65rem;} .m-row .m-field{flex:1;}
+.m-check-row{display:flex;align-items:center;gap:0.6rem;padding:0.7rem 0.8rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color 0.2s;margin-bottom:0.9rem;}
+.m-check-row:hover{border-color:var(--accent);}
+.m-check-row input[type=checkbox]{accent-color:var(--accent);width:13px;height:13px;cursor:pointer;}
+.m-check-lbl{font-size:0.68rem;color:var(--text);} .m-check-note{font-size:0.58rem;color:var(--muted);margin-top:0.12rem;}
+.m-btn-row{display:flex;gap:0.6rem;margin-top:1.1rem;}
+.m-btn{font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:0.09em;text-transform:uppercase;border:none;border-radius:8px;padding:0.65rem 0.9rem;cursor:pointer;transition:all 0.2s;flex:1;}
+.m-btn-primary{background:var(--accent);color:#0c0f0a;font-weight:500;}
+.m-btn-primary:hover{background:var(--accent2);}
+.m-btn-sec{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.m-btn-sec:hover{color:var(--text);}
+.ob-steps{display:flex;gap:0.3rem;margin-bottom:1.1rem;}
+.ob-step{height:3px;flex:1;background:var(--border);border-radius:99px;transition:background 0.3s;}
+.ob-step.done{background:var(--accent);} .ob-step.current{background:var(--gold);}
+
+.toast{position:fixed;bottom:1.75rem;left:50%;transform:translateX(-50%) translateY(70px);background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:0.6rem 1.1rem;font-size:0.65rem;color:var(--text);letter-spacing:0.05em;z-index:300;transition:transform 0.3s ease;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.success{border-color:rgba(126,184,122,0.4);color:var(--accent2);}
+.toast.warning{border-color:rgba(212,137,74,0.4);color:var(--warn2);}
+
+.empty-state{text-align:center;padding:1.75rem;color:var(--muted);font-size:0.67rem;line-height:1.7;}
+footer{padding:0.9rem 2rem 1.75rem;font-size:0.56rem;color:#3d4f3a;letter-spacing:0.08em;text-align:center;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>F<span>ast</span></h1>
+  <span class="tagline">Educational Simulation</span>
+</header>
+
+<div class="top-bar">
+  <button class="tb-btn tb-start" onclick="openStartModal()">▶ Start Fast</button>
+  <button class="tb-btn tb-stop" onclick="stopFast()">■ End Fast</button>
+  <button class="tb-btn tb-water" onclick="logWater()">💧 +Water</button>
+  <button class="tb-btn tb-elytes" id="elytesBtn" onclick="logElectrolytes()">⚡ Electrolytes</button>
+  <button class="tb-btn tb-settings" onclick="switchTab('settings')">⚙ Settings</button>
+</div>
+
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('track')" id="tab-track">Track</button>
+  <button class="tab-btn" onclick="switchTab('stages')" id="tab-stages">Stages</button>
+  <button class="tab-btn" onclick="switchTab('breaks')" id="tab-breaks">Breaks</button>
+  <button class="tab-btn" onclick="switchTab('game')" id="tab-game">🏆 Game</button>
+  <button class="tab-btn" onclick="switchTab('settings')" id="tab-settings">Settings</button>
+</div>
+
+<main>
+
+<!-- TRACK TAB -->
+<div class="tab-panel active" id="panel-track">
+  <div class="timer-card" id="timerCard">
+    <div class="timer-label" id="timerLabel">No active fast</div>
+    <div class="timer-display inactive" id="timerDisplay">00:00:00</div>
+    <div class="timer-sub" id="timerSub">Tap Start Fast to begin</div>
+    <div id="timerEditRow" style="display:none;margin-top:0.6rem;">
+      <button onclick="openEditStart()" style="font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.08em;text-transform:uppercase;background:none;border:1px solid var(--border);border-radius:5px;color:var(--muted);padding:0.22rem 0.6rem;cursor:pointer;">✎ Edit start time</button>
+    </div>
+  </div>
+  <div class="stage-card">
+    <div class="stage-header">
+      <div class="stage-name" id="stageName">—</div>
+      <div class="stage-hrs" id="stageHrs"></div>
+    </div>
+    <div class="stage-desc" id="stageDesc">Start your fast to see what your body is doing right now.</div>
+    <div class="stage-warning" id="stageWarn"></div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="milestones" id="milestones"></div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-val" id="statHours">0</div><div class="stat-lbl">Hours</div></div>
+    <div class="stat-box"><div class="stat-val" id="statStage">—</div><div class="stat-lbl">Stage</div></div>
+    <div class="stat-box"><div class="stat-val" id="statNext">—</div><div class="stat-lbl">Next Stage</div></div>
+  </div>
+  <div class="card" id="waterCard" style="display:none">
+    <div class="card-title">Today's Water</div>
+    <div id="waterStats"></div>
+  </div>
+</div>
+
+<!-- STAGES TAB -->
+<div class="tab-panel" id="panel-stages">
+  <div class="stages-card">
+    <div class="stages-ttl">Body Stages — Physiology &amp; Danger Flags</div>
+    <div id="stagesList"></div>
+  </div>
+</div>
+
+<!-- BREAKS TAB -->
+<div class="tab-panel" id="panel-breaks">
+  <div class="info-card">
+    <div class="breaks-sec-hdr" style="color:var(--danger);background:rgba(196,106,90,0.06);">🚫 Obvious — Anything With Calories</div>
+    <div class="break-item"><div class="bi-icon">🍎</div><div><div class="bi-name">Any food, snack, or meal</div><div class="bi-why">Calories trigger insulin release and immediately halt both ketosis and autophagy. The fast ends the moment caloric food enters digestion.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🧃</div><div><div class="bi-name">Juice, soda, sweetened drinks</div><div class="bi-why">Liquid sugar causes a rapid, large insulin spike — often worse than solid food because there's no fiber to slow absorption.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🍺</div><div><div class="bi-name">Alcohol</div><div class="bi-why">Alcohol is caloric (7 kcal/gram) and disrupts liver ketone production. Even "zero sugar" spirits impair the liver's fasting-state function.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🥛</div><div><div class="bi-name">Milk, cream, oat milk, almond milk</div><div class="bi-why">All contain calories — carbs, protein, or fat — in amounts that trigger insulin. Even a small splash of cream in coffee slows autophagy.</div></div></div>
+    <div class="breaks-sec-hdr" style="color:var(--warn2);background:rgba(212,137,74,0.05);">⚠️ Sneaky — Hidden Calories &amp; Insulin Triggers</div>
+    <div class="break-item"><div class="bi-icon">💧</div><div><div class="bi-name">Flavored sparkling water with "natural flavors"</div><div class="bi-why">Fruit oils and flavor compounds can trigger a cephalic phase insulin response — your body senses sweetness and releases a pre-emptive insulin burst even without sugar.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🍬</div><div><div class="bi-name">Gum and mints (even sugar-free)</div><div class="bi-why">Chewing and detecting sweetness signals your digestive system that food is incoming. Some gums also contain sorbitol, a caloric sugar alcohol.</div></div></div>
+    <div class="break-item"><div class="bi-icon">💊</div><div><div class="bi-name">Some medications with fillers</div><div class="bi-why">Coated tablets and gummies may contain starch, sugar, or glycerin. Pure capsule medications are generally fine.</div></div></div>
+    <div class="break-item"><div class="bi-icon">⚡</div><div><div class="bi-name">Flavored electrolytes with sugar</div><div class="bi-why">Sports drinks and many electrolyte packets contain sucrose, dextrose, or maltodextrin. Always read the ingredients list.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🦴</div><div><div class="bi-name">Bone broth (significant protein)</div><div class="bi-why">Amino acids activate mTOR (a cellular growth pathway) and suppress autophagy. Protein — even in liquid form — is still protein.</div></div></div>
+    <div class="breaks-sec-hdr" style="color:var(--gold);background:rgba(201,168,76,0.04);">🧪 Supplements That May Break a Fast</div>
+    <div class="break-item"><div class="bi-icon">💪</div><div><div class="bi-name">BCAAs</div><div class="bi-why">Amino acids activate mTOR and suppress autophagy. They also provide small calories. BCAAs break a fast for all practical purposes.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🥤</div><div><div class="bi-name">Protein powder</div><div class="bi-why">Any protein triggers an insulin and mTOR response — even unflavored varieties.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🍊</div><div><div class="bi-name">Gummy vitamins and some capsule fillers</div><div class="bi-why">Gummy vitamins contain sugar. Some capsule vitamins use starch or oil-based carriers. Pure powder supplements in plain capsules are generally fine.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🐟</div><div><div class="bi-name">Fish oil capsules</div><div class="bi-why">Pure fish oil is caloric. A single capsule is likely negligible for most fasting goals, but technically breaks a strict fast.</div></div></div>
+    <div class="breaks-sec-hdr" style="color:var(--accent);background:rgba(126,184,122,0.04);">✅ Probably Fine — Common Worries That Aren't</div>
+    <div class="break-item"><div class="bi-icon">☕</div><div><div class="bi-name">Black coffee</div><div class="bi-why">Zero calories, no measurable insulin response. May actually enhance autophagy. Don't add anything to it.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🍵</div><div><div class="bi-name">Plain tea — but read the label on "herbal"</div><div class="bi-why">Black, green, white, and oolong teas are fast-safe. Many herbal teas contain fruit pieces, fruit flavoring, or fruit oils — even when the packaging looks plain. These can carry natural sugars and trigger an insulin response. "Herbal" and "natural" do not mean sugar-free.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🫧</div><div><div class="bi-name">Plain sparkling water</div><div class="bi-why">Unflavored carbonated water is fine. Once "natural flavors" or fruit appear on the label, see Sneaky section above.</div></div></div>
+    <div class="break-item"><div class="bi-icon">🧂</div><div><div class="bi-name">Salt / sodium</div><div class="bi-why">Zero calories, no insulin response. As insulin drops, the kidneys excrete sodium faster — salt intake becomes genuinely necessary in extended fasts.</div></div></div>
+    <div class="break-item"><div class="bi-icon">⚡</div><div><div class="bi-name">Clean-label electrolyte powders</div><div class="bi-why">Sodium, potassium, magnesium, and stevia are generally fast-safe. Avoid anything listing maltodextrin, dextrose, or natural flavors.</div></div></div>
+    <div class="break-item"><div class="bi-icon">💊</div><div><div class="bi-name">Most prescription medications</div><div class="bi-why">Most active pharmaceutical ingredients don't break a fast in a meaningful metabolic way. Always follow your prescriber's instructions.</div></div></div>
+  </div>
+</div>
+
+<!-- GAME TAB -->
+<div class="tab-panel" id="panel-game">
+
+  <div id="gameInactive">
+    <div class="card">
+      <div class="card-title">Extended Fast Game</div>
+      <p style="font-size:0.7rem;color:var(--muted);line-height:1.7;margin-bottom:0.9rem;">Start a fast to activate the game. Log water, electrolytes, sleep, workouts, and how you feel throughout the day. Each day builds a sequential record of your choices — and the score reflects real physiological consequences.</p>
+      <button class="g-btn g-btn-sec" onclick="openStartModal()">Start a Fast First</button>
+    </div>
+  </div>
+
+  <div id="gameActive" style="display:none">
+
+    <!-- Hero score bar -->
+    <div class="game-hero">
+      <div class="game-hero-left">
+        <div class="g-score-lbl">Score</div>
+        <div class="g-score" id="gScore">0</div>
+        <div class="g-mult" id="gMult"></div>
+      </div>
+      <div class="game-hero-right">
+        <div class="g-round-badge" id="gRoundBadge">Round 1</div>
+        <div class="g-day-badge" id="gDayBadge">Day 1</div>
+      </div>
+    </div>
+
+    <!-- In-game action buttons -->
+    <div class="card" style="padding:0.9rem 1.1rem;">
+      <div class="game-action-bar">
+        <button class="gab-btn gab-water" onclick="gameLogWater()">💧 +Water</button>
+        <button class="gab-btn gab-elytes" onclick="gameLogElytes()">⚡ +Electrolytes</button>
+        <button class="gab-btn gab-hungry" onclick="gameLogHungry()">🔥 Stayed Hungry!</button>
+        <button class="gab-btn gab-checkin" onclick="openCheckin()">💬 How I Feel</button>
+      </div>
+      <!-- Water progress bar -->
+      <div style="margin-top:0.85rem;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.35rem;">
+          <span style="font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);">💧 Today's Water</span>
+          <span style="font-size:0.75rem;font-family:'DM Serif Display',serif;color:var(--blue);" id="gameWaterLabel">0 / 0</span>
+        </div>
+        <div style="height:6px;background:var(--surface2);border-radius:99px;overflow:hidden;">
+          <div id="gameWaterBar" style="height:100%;width:0%;background:linear-gradient(90deg,#4a8fa8,var(--blue));border-radius:99px;transition:width 0.4s ease;"></div>
+        </div>
+        <div style="font-size:0.55rem;color:var(--muted);margin-top:0.25rem;" id="gameWaterPct">0% of daily goal</div>
+      </div>
+    </div>
+
+    <!-- Today's structured goals -->
+    <div class="card">
+      <div class="card-title" id="todayGoalsTitle">Day 1 Goals</div>
+      <div class="obj-section" id="structuredGoals"></div>
+    </div>
+
+    <!-- Sequential day log -->
+    <div class="card">
+      <div class="card-title">Day Log — In Sequence</div>
+      <div class="day-log" id="dayLog"></div>
+    </div>
+
+    <!-- Round / Day controls -->
+    <div class="card">
+      <div class="card-title">Day &amp; Round Controls</div>
+      <p style="font-size:0.67rem;color:var(--muted);line-height:1.6;margin-bottom:0.85rem;" id="roundDesc"></p>
+      <div class="round-ctrl-btns" id="roundCtrlBtns"></div>
+    </div>
+
+  </div>
+
+  <!-- History always visible -->
+  <div class="card">
+    <div class="card-title">Game History</div>
+    <div id="gameHistory"></div>
+  </div>
+
+</div>
+
+<!-- SETTINGS TAB -->
+<div class="tab-panel" id="panel-settings">
+  <div class="card">
+    <div class="s-group-title">Units &amp; Measurements</div>
+    <div class="s-group">
+      <div class="s-row"><div><div class="s-lbl">Weight unit</div></div><select class="s-sel" id="s-weightUnit" onchange="saveSetting('weightUnit',this.value)"><option value="lbs">lbs</option><option value="kg">kg</option></select></div>
+      <div class="s-row"><div><div class="s-lbl">Water unit</div></div><select class="s-sel" id="s-waterUnit" onchange="saveSetting('waterUnit',this.value)"><option value="oz">fl oz</option><option value="ml">ml</option></select></div>
+      <div class="s-row"><div><div class="s-lbl">Bottle / cup size</div><div class="s-note">Amount per +Water tap</div></div><input type="number" class="s-num" id="s-bottleSize" min="1" max="2000" onchange="saveSetting('bottleSize',+this.value)"></div>
+      <div class="s-row"><div><div class="s-lbl">Add by single unit</div><div class="s-note">+Water adds 1 unit instead</div></div><div class="toggle" id="tog-singleUnit" onclick="toggleSetting('singleUnit')"></div></div>
+      <div class="s-row"><div><div class="s-lbl">Daily water goal</div></div><input type="number" class="s-num" id="s-waterGoal" min="1" max="10000" onchange="saveSetting('waterGoal',+this.value)"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="s-group-title">Fasting Settings</div>
+    <div class="s-group">
+      <div class="s-row"><div><div class="s-lbl">Default digestive delay (hrs)</div><div class="s-note">Hours after eating before fast clock starts</div></div><input type="number" class="s-num" id="s-digestDelay" min="1" max="12" step="0.5" onchange="saveSetting('digestDelay',+this.value)"></div>
+      <div class="s-row"><div><div class="s-lbl">Keto / carnivore default</div><div class="s-note">Pre-checks keto box in Start Fast</div></div><div class="toggle" id="tog-ketoDefault" onclick="toggleSetting('ketoDefault')"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="s-group-title">Top Bar</div>
+    <div class="s-group">
+      <div class="s-row"><div><div class="s-lbl">Show Electrolytes button</div></div><div class="toggle" id="tog-showElytes" onclick="toggleSetting('showElytes')"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="s-group-title">Game Settings</div>
+    <div class="s-group">
+      <div class="s-row"><div><div class="s-lbl">Max rounds (1–3)</div></div><select class="s-sel" id="s-maxRounds" onchange="saveSetting('maxRounds',+this.value)"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></div>
+      <div class="s-row"><div><div class="s-lbl">Sleep overage threshold (hrs)</div><div class="s-note">Sleeping beyond this loses points</div></div><input type="number" class="s-num" id="s-sleepThreshold" min="7" max="14" onchange="saveSetting('sleepThreshold',+this.value)"></div>
+      <div class="s-row"><div><div class="s-lbl">Show Round 3 warning</div></div><div class="toggle" id="tog-round3Warning" onclick="toggleSetting('round3Warning')"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="s-group-title">Profile</div>
+    <div class="s-group">
+      <div class="s-row"><div><div class="s-lbl">Baseline weight</div></div><input type="number" class="s-num" id="s-baseWeight" min="0" max="999" step="0.1" onchange="saveSetting('baseWeight',this.value)"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="s-group-title">Data Export</div>
+    <p style="font-size:0.63rem;color:var(--muted);line-height:1.6;margin-bottom:0.25rem;">All data stays on this device. Export your full log as CSV for class submission or personal review.</p>
+    <button class="export-btn" onclick="exportCSV()">⬇ Export All Data as CSV</button>
+    <button class="export-btn" style="color:var(--warn2);border-color:rgba(212,137,74,0.3);margin-top:0.4rem;" onclick="resetCurrentGame()">↺ Reset Current Game</button>
+    <button class="export-btn" style="color:var(--danger);border-color:rgba(196,106,90,0.3);margin-top:0.4rem;" onclick="clearAllData()">🗑 Clear All Data</button>
+  </div>
+</div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- MODAL: Start Fast -->
+<div class="modal-overlay" id="modalStart">
+  <div class="modal">
+    <div class="modal-title">Start Fast</div>
+    <div class="modal-sub">Enter your last meal time. The digestive delay shifts the true fast clock forward — your body needs time after eating before fasting metabolism begins.</div>
+    <div class="m-row">
+      <div class="m-field"><label>Date</label><input type="date" class="m-input" id="mDate"></div>
+      <div class="m-field"><label>Last Meal Time</label><input type="time" class="m-input" id="mTime"></div>
+    </div>
+    <div class="m-field">
+      <label>Digestive Delay (hours)</label>
+      <input type="number" class="m-input" id="mDelay" min="1" max="12" step="0.5" oninput="updateDelayNote()">
+      <div class="m-field-note">Fast clock starts <strong id="mDelayDisplay">8 hours</strong> after your last meal.</div>
+    </div>
+    <div class="m-check-row" onclick="toggleKetoCheck()">
+      <input type="checkbox" id="ketoCheck" onclick="event.stopPropagation();toggleKetoCheck()">
+      <div>
+        <div class="m-check-lbl">I'm eating keto / carnivore</div>
+        <div class="m-check-note">Fat &amp; protein digest faster with no carb-driven insulin spike — adjusts delay to 4.5 hrs</div>
+      </div>
+    </div>
+    <div class="m-btn-row">
+      <button class="m-btn m-btn-sec" onclick="closeModal('modalStart')">Cancel</button>
+      <button class="m-btn m-btn-primary" onclick="confirmStart()">Begin Fast</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Scale Weigh-in -->
+<div class="modal-overlay" id="modalScale">
+  <div class="modal">
+    <div class="modal-title">Morning Weigh-in</div>
+    <div class="modal-sub">Enter your weight right now. This is saved to your profile data regardless of how the game ends — it becomes a data point you can track across your fasting history.</div>
+    <div class="m-field">
+      <label>Current Weight (<span id="scaleUnitLabel">lbs</span>)</label>
+      <input type="number" class="m-input" id="scaleWeightInput" min="0" max="999" step="0.1" placeholder="e.g. 172.4">
+    </div>
+    <div class="m-btn-row">
+      <button class="m-btn m-btn-sec" onclick="closeModal('modalScale')">Cancel</button>
+      <button class="m-btn m-btn-primary" onclick="confirmScale()">Log Weight — +20 pts</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Check-in -->
+<div class="modal-overlay" id="modalCheckin">
+  <div class="modal">
+    <div class="modal-title">How Are You Feeling?</div>
+    <div class="modal-sub">Select all that apply right now. This is not scored — it's a data point tracking how fasting actually feels over time. You can check in as many times as you want throughout the day.</div>
+    <div class="feelings-grid" id="feelingsGrid"></div>
+    <div class="m-btn-row">
+      <button class="m-btn m-btn-sec" onclick="closeModal('modalCheckin')">Cancel</button>
+      <button class="m-btn m-btn-primary" onclick="submitCheckin()">Log Feelings</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Break Fast -->
+<div class="modal-overlay" id="modalBreakFast">
+  <div class="modal">
+    <div class="modal-title">Breaking Your Fast</div>
+    <div class="modal-sub">How are you breaking this fast? Your choice affects your score — and sets up whether you continue into Round 2.</div>
+    <div class="break-fast-opts" id="breakFastOpts"></div>
+    <div class="m-btn-row" style="margin-top:0.75rem;">
+      <button class="m-btn m-btn-sec" onclick="closeModal('modalBreakFast')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Round 3 Warning -->
+<div class="modal-overlay" id="modalRound3">
+  <div class="modal">
+    <div class="modal-title" style="color:var(--danger2)">⚠ Extended Fasting Warning</div>
+    <div class="modal-sub">You are entering Round 3 — a prolonged multi-day fast. Physiological stakes increase significantly at this stage.<br><br><strong style="color:var(--warn2)">What happens at 48h+:</strong> Electrolyte imbalances become clinically dangerous. Refeeding syndrome risk emerges. Cardiac arrhythmias from electrolyte depletion are documented. Cognitive impairment may prevent you from recognizing your own symptoms.<br><br>This is an educational simulation — these are the dangers the game is designed to teach.</div>
+    <div class="m-btn-row">
+      <button class="m-btn m-btn-sec" onclick="closeModal('modalRound3')">Go Back</button>
+      <button class="m-btn" style="background:var(--danger);color:#fff;flex:1;" onclick="confirmRound3()">I Understand — Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: End Game -->
+<div class="modal-overlay" id="modalEndGame">
+  <div class="modal">
+    <div class="modal-title">Game Complete</div>
+    <div class="modal-sub">Score saved to history. Tap any history entry to see the full breakdown including your feeling check-ins.</div>
+    <div style="text-align:center;margin:1rem 0;">
+      <div style="font-size:0.58rem;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;margin-bottom:0.3rem;">Final Score</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:2.8rem;color:var(--gold2);" id="finalScore">0</div>
+    </div>
+    <div class="m-btn-row"><button class="m-btn m-btn-primary" onclick="closeModal('modalEndGame')">Done</button></div>
+  </div>
+</div>
+
+<!-- MODAL: Past Days Catchup -->
+<div class="modal-overlay" id="modalCatchup">
+  <div class="modal">
+    <div class="modal-title">Log Past Days</div>
+    <div class="modal-sub" id="catchupSub"></div>
+    <div id="catchupBody"></div>
+    <div class="m-btn-row">
+      <button class="m-btn m-btn-sec" id="btnCatchupSkip" onclick="catchupSkip()">Skip This Day</button>
+      <button class="m-btn m-btn-primary" id="btnCatchupNext" onclick="catchupNext()">Next Day →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Onboarding -->
+<div class="modal-overlay" id="modalOnboard">
+  <div class="modal">
+    <div class="ob-steps" id="obSteps"></div>
+    <div id="obContent"></div>
+    <div class="m-btn-row">
+      <button class="m-btn m-btn-sec" id="btnObBack" onclick="obBack()">Back</button>
+      <button class="m-btn m-btn-primary" id="btnObNext" onclick="obNext()">Next</button>
+    </div>
+  </div>
+</div>
+
+<footer>Educational simulation only. Not medical advice. All data is stored on your device.</footer>
+
+<script>
+'use strict';
+
+// ── STAGES ──────────────────────────────────────────────────
+const STAGES = [
+  {id:'fed',name:'Fed State',icon:'🍽️',start:0,end:4,
+   body:'Your body is digesting and absorbing nutrients. Blood glucose and insulin are elevated. No fat burning yet.',
+   warn:null,danger:false},
+  {id:'postabsorptive',name:'Post-Absorptive',icon:'⚡',start:4,end:8,
+   body:'Digestion is wrapping up. Insulin begins to fall. Liver releases stored glycogen. Mild fat breakdown begins.',
+   warn:'⚠ Mild hunger waves are common as blood sugar dips. Normal — it passes. Stay hydrated.',danger:false},
+  {id:'glycogen',name:'Glycogen Depletion',icon:'🔋',start:8,end:12,
+   body:'Liver glycogen stores are being actively depleted. Growth hormone rises to protect muscle mass. Body shifts toward fat as primary fuel.',
+   warn:'⚠ Headaches, lightheadedness, or irritability are common — often called the "fasting flu." These symptoms pass as adaptation begins.',danger:false},
+  {id:'fatburn',name:'Fat Burning',icon:'🔥',start:12,end:18,
+   body:'Fat oxidation is now significant. Fatty acids are converted to ketones by the liver. Many people feel calm, clear energy at this point.',
+   warn:'⚠ Sodium excretion accelerates as insulin drops. This can cause electrolyte imbalance. Plain electrolytes (no sugar) become important here.',danger:false},
+  {id:'ketosis',name:'Early Ketosis',icon:'✨',start:18,end:24,
+   body:'Ketone bodies are now measurable. Your brain begins switching from glucose to ketones. Autophagy begins ramping up. Hunger often paradoxically decreases.',
+   warn:'⚠ Heart palpitations can occur due to low magnesium and potassium — both excreted more rapidly here. Electrolyte management is required.',danger:false},
+  {id:'autophagy',name:'Peak Autophagy',icon:'🔬',start:24,end:36,
+   body:'Autophagy peaks — cells break down and recycle damaged proteins. Stem cell activity enhanced. Inflammatory markers drop. Nobel Prize research (2016).',
+   warn:'🚨 At 24+ hours, blood pressure can drop due to volume depletion. Electrolyte imbalances become clinically relevant.',danger:true},
+  {id:'deep',name:'Deep Ketosis',icon:'🌙',start:36,end:48,
+   body:'Deep fat burning. Immune system begins resetting. Growth hormone surges up to 5× baseline. Insulin sensitivity significantly improved.',
+   warn:'🚨 At 36+ hours: dangerous hyponatremia (low sodium) risk increases. Brain is vulnerable — symptoms include nausea, confusion, and in severe cases, seizure.',danger:true},
+  {id:'extended',name:'Extended Fast',icon:'🌌',start:48,end:999,
+   body:'Stem cell regeneration elevated. Autophagy high. Gut gets a deep rest. Electrolyte management is essential.',
+   warn:'🚨 DANGER ZONE: Refeeding syndrome risk is real — reintroducing carbohydrates too rapidly can cause cardiac arrest. Arrhythmias from electrolyte depletion are documented. Cognitive impairment may prevent you from recognizing your own symptoms.',danger:true}
+];
+const MILESTONES=[{h:0,label:'0h'},{h:12,label:'12h'},{h:18,label:'18h'},{h:24,label:'24h'},{h:36,label:'36h'},{h:48,label:'48h+'}];
+
+const ALL_FEELINGS = [
+  'Energized','Focused','Clear-headed','Calm','Euphoric','Motivated',
+  'Low energy','Tired','Foggy','Irritable','Anxious','Weak',
+  'Hungry','Very hungry','Headache','Lightheaded','Dizzy','Nauseous',
+  'Thirsty','Mouth dry','Heart racing','Cold','Shaky','Normal',
+  'Strong','Sharp','Peaceful','Proud','Struggling','Craving sweets',
+  'Craving food','No hunger at all','Mood lifted','Mood low'
+];
+
+// ── DEFAULTS ────────────────────────────────────────────────
+const DEFAULTS = {
+  weightUnit:'lbs',waterUnit:'oz',bottleSize:16,singleUnit:false,waterGoal:64,
+  digestDelay:8,ketoDefault:false,showElytes:true,
+  maxRounds:2,sleepThreshold:10,round3Warning:true,
+  baseWeight:'',onboarded:false
+};
+
+// ── STATE ───────────────────────────────────────────────────
+let cfg = {...DEFAULTS};
+let fastStart = null;   // when fasting metabolism began (lastMeal + delay) — drives physiology
+let trackStart = null;  // when the timer started (always 'now') — drives the live clock
+let lastMeal = null;
+let isKeto = false;
+let timerInt = null;
+let waterLog = [];
+let elyteLog = [];
+let game = newGame();
+let gameHistory = [];
+let milestonesGiven = new Set();
+let obStep = 0, obData = {};
+let catchupDays = [];   // list of past day numbers to catch up
+let catchupIdx = 0;     // which past day we're currently logging
+let catchupData = {};   // temp storage for current catchup day answers
+let selectedFeelings = new Set();
+
+function newGame() {
+  return {
+    active: false,
+    round: 1,          // 1, 2, 3
+    mult: 1,           // point multiplier
+    day: 1,            // current day number (across rounds)
+    score: 0,
+    log: [],           // all entries ever: {ts, icon, label, pts, type, day, round}
+    // Per-day structured goal state — keyed by "r{round}_d{day}"
+    dayState: {},
+    // Feeling check-ins stored separately for history
+    checkins: []
+  };
+}
+
+function dayKey(r, d) { return `r${r}_d${d}`; }
+function curKey() { return dayKey(game.round, game.day); }
+
+function getDayState(r, d) {
+  const k = dayKey(r, d);
+  if (!game.dayState[k]) {
+    game.dayState[k] = {
+      scaleDone: false,
+      workoutChoice: null,   // 'light'|'heavy'|'none'
+      sleepHours: null,
+      sleepQuality: null,    // 'good'|'bad'
+      bedEarly: false,
+      breakFastChoice: null, // 'egg_soup'|'bone_broth'|'omad_clean'|'if_clean'|'off_list'
+      dayEnded: false
+    };
+  }
+  return game.dayState[k];
+}
+
+// ── PERSIST ─────────────────────────────────────────────────
+function saveAll() {
+  localStorage.setItem('fast_v6', JSON.stringify({
+    cfg,
+    fastStart: fastStart?.toISOString()||null,
+    trackStart: trackStart?.toISOString()||null,
+    lastMeal: lastMeal?.toISOString()||null,
+    isKeto, waterLog, elyteLog, game, gameHistory
+  }));
+}
+
+function loadAll() {
+  const raw = localStorage.getItem('fast_v6');
+  if (!raw) return false;
+  try {
+    const d = JSON.parse(raw);
+    cfg = {...DEFAULTS,...(d.cfg||{})};
+    fastStart = d.fastStart ? new Date(d.fastStart) : null;
+    trackStart = d.trackStart ? new Date(d.trackStart) : null;
+    lastMeal = d.lastMeal ? new Date(d.lastMeal) : null;
+    isKeto = !!d.isKeto;
+    waterLog = d.waterLog||[];
+    elyteLog = d.elyteLog||[];
+    game = d.game || newGame();
+    gameHistory = d.gameHistory||[];
+    return true;
+  } catch(e){ return false; }
+}
+
+function saveSetting(k,v){cfg[k]=v;saveAll();applySettings();}
+function toggleSetting(k){cfg[k]=!cfg[k];saveAll();applySettings();}
+
+// ── SETTINGS UI ─────────────────────────────────────────────
+function applySettings() {
+  const vals={'s-weightUnit':cfg.weightUnit,'s-waterUnit':cfg.waterUnit,'s-bottleSize':cfg.bottleSize,
+    's-waterGoal':cfg.waterGoal,'s-digestDelay':cfg.digestDelay,'s-maxRounds':cfg.maxRounds,
+    's-sleepThreshold':cfg.sleepThreshold,'s-baseWeight':cfg.baseWeight};
+  for(const [id,v] of Object.entries(vals)){const el=document.getElementById(id);if(el)el.value=v;}
+  const togs={'tog-singleUnit':cfg.singleUnit,'tog-ketoDefault':cfg.ketoDefault,
+    'tog-showElytes':cfg.showElytes,'tog-round3Warning':cfg.round3Warning};
+  for(const [id,v] of Object.entries(togs)){const el=document.getElementById(id);if(el)el.classList.toggle('on',v);}
+  const eb=document.getElementById('elytesBtn');
+  if(eb) eb.style.display=cfg.showElytes?'':'none';
+}
+
+// ── TABS ────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name==='game') renderGame();
+  if(name==='stages') renderStagesList(getElapsedHours());
+}
+
+// ── STAGE LOGIC ─────────────────────────────────────────────
+function getStageIdx(h){for(let i=STAGES.length-1;i>=0;i--){if(h>=STAGES[i].start)return i;}return 0;}
+function getElapsedHours(){if(!fastStart)return 0;const ms=Date.now()-fastStart;return ms<0?0:ms/3600000;}
+function getNextStageH(h){const i=getStageIdx(h);return i<STAGES.length-1?STAGES[i+1].start:null;}
+
+function renderStagesList(curH) {
+  const curIdx=getStageIdx(curH);
+  document.getElementById('stagesList').innerHTML=STAGES.map((s,i)=>{
+    const reached=curH>=s.start&&fastStart;
+    const isCur=i===curIdx&&fastStart;
+    const badge=isCur?'<span class="s-badge now">Now</span>':reached?'<span class="s-badge done">✓</span>':`<span class="s-badge upcoming">${s.start}h+</span>`;
+    const tl=s.end===999?`${s.start}h+`:`${s.start}h – ${s.end}h`;
+    const wHtml=s.warn?`<div class="s-warn ${s.danger?'danger':'caution'}">${s.warn}</div>`:'';
+    return `<div class="stage-row ${reached?'reached':''} ${isCur?'current':''}">
+      <div class="stage-row-inner">
+        <div class="s-icon">${s.icon}</div>
+        <div class="s-info">
+          <div class="s-name">${s.name}</div>
+          <div class="s-time">${tl}</div>
+          <div class="s-body">${s.body}</div>${wHtml}
+        </div>${badge}
+      </div></div>`;
+  }).join('');
+}
+
+function renderMilestones(h) {
+  document.getElementById('milestones').innerHTML=MILESTONES.map(m=>`<div class="ms-dot ${h>=m.h&&fastStart?'reached':''}">${m.label}</div>`).join('');
+}
+
+// ── TICK ────────────────────────────────────────────────────
+function tick() {
+  if(!fastStart) return;
+  const ms=Date.now()-fastStart;
+  const tot=Math.floor(Math.max(0,ms)/1000);
+  const h=Math.floor(tot/3600),m=Math.floor((tot%3600)/60),s=tot%60;
+  const p=n=>String(n).padStart(2,'0');
+  document.getElementById('timerDisplay').textContent=`${p(h)}:${p(m)}:${p(s)}`;
+  document.getElementById('timerDisplay').classList.remove('inactive');
+  document.getElementById('timerCard').classList.add('active');
+  document.getElementById('timerLabel').textContent='Fasting for';
+  document.getElementById('timerSub').textContent=`Since ${fastStart.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}`;
+  document.getElementById('timerEditRow').style.display='';
+  const hf=ms/3600000;
+  const si=getStageIdx(hf);
+  const stage=STAGES[si];
+  document.getElementById('stageName').textContent=`${stage.icon} ${stage.name}`;
+  document.getElementById('stageHrs').textContent=stage.end===999?`${stage.start}h+`:`${stage.start}h – ${stage.end}h`;
+  document.getElementById('stageDesc').textContent=stage.body;
+  const wEl=document.getElementById('stageWarn');
+  if(stage.warn){wEl.textContent=stage.warn;wEl.className='stage-warning show '+(stage.danger?'danger':'caution');}
+  else{wEl.className='stage-warning';}
+  document.getElementById('progressFill').style.width=Math.min(100,(hf/48)*100)+'%';
+  document.getElementById('statHours').textContent=h;
+  document.getElementById('statStage').textContent=si+1;
+  document.getElementById('statNext').textContent=getNextStageH(hf)?`${getNextStageH(hf)}h`:'✓';
+  renderMilestones(hf);
+  updateWaterCard();
+  checkMilestonePoints(hf);
+}
+
+// ── WATER (track tab) ────────────────────────────────────────
+function logWater() {
+  if(!fastStart){showToast('Start a fast first','warning');return;}
+  const amt=cfg.singleUnit?1:Number(cfg.bottleSize);
+  waterLog.push({ts:new Date().toISOString(),amount:amt,unit:cfg.waterUnit});
+  saveAll();updateWaterCard();
+  showToast(`+${amt}${cfg.waterUnit} logged`,'success');
+}
+
+function logElectrolytes() {
+  if(!fastStart){showToast('Start a fast first','warning');return;}
+  elyteLog.push({ts:new Date().toISOString()});
+  saveAll();
+  showToast('Electrolytes logged ⚡','success');
+}
+
+function updateWaterCard() {
+  const card=document.getElementById('waterCard');
+  if(!fastStart||waterLog.length===0){card.style.display='none';return;}
+  card.style.display='';
+  const today=new Date().toDateString();
+  const entries=waterLog.filter(e=>new Date(e.ts).toDateString()===today);
+  const total=entries.reduce((s,e)=>s+e.amount,0);
+  const pct=Math.min(100,Math.round((total/cfg.waterGoal)*100));
+  document.getElementById('waterStats').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.45rem;">
+      <span style="font-size:0.65rem;color:var(--muted)">Today</span>
+      <span style="font-size:1.05rem;font-family:'DM Serif Display',serif;color:var(--blue)">${total}/${cfg.waterGoal} ${cfg.waterUnit}</span>
+    </div>
+    <div style="height:4px;background:var(--surface2);border-radius:99px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#4a8fa8,var(--blue));border-radius:99px;transition:width 0.5s"></div>
+    </div>
+    <div style="font-size:0.56rem;color:var(--muted);margin-top:0.28rem;">${pct}% of goal · ${entries.length} entries</div>`;
+}
+
+// ── START / STOP FAST ────────────────────────────────────────
+function openStartModal() {
+  const now=new Date();
+  document.getElementById('mDate').value=now.toISOString().split('T')[0];
+  document.getElementById('mTime').value=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  isKeto=cfg.ketoDefault;
+  document.getElementById('ketoCheck').checked=isKeto;
+  document.getElementById('mDelay').value=isKeto?4.5:cfg.digestDelay;
+  updateDelayNote();
+  openModal('modalStart');
+}
+
+function openEditStart(){
+  if(!fastStart) return;
+  // Pre-fill the start modal with the current saved values
+  const d = new Date(lastMeal || fastStart);
+  document.getElementById('mDate').value = d.toISOString().split('T')[0];
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  document.getElementById('mTime').value = `${hh}:${mm}`;
+  // Calculate current delay from saved values
+  if(lastMeal && fastStart){
+    const delayHrs = (fastStart - lastMeal) / 3600000;
+    document.getElementById('mDelay').value = delayHrs;
+  }
+  document.getElementById('ketoCheck').checked = isKeto;
+  updateDelayNote();
+  openModal('modalStart');
+}
+
+function updateDelayNote(){
+  const v=document.getElementById('mDelay').value;
+  document.getElementById('mDelayDisplay').textContent=v+' hours';
+}
+
+function toggleKetoCheck(){
+  const cb=document.getElementById('ketoCheck');
+  isKeto=cb.checked;
+  document.getElementById('mDelay').value=isKeto?4.5:cfg.digestDelay;
+  updateDelayNote();
+}
+
+function confirmStart() {
+  const dv=document.getElementById('mDate').value;
+  const tv=document.getElementById('mTime').value;
+  if(!dv||!tv){showToast('Set a date and time','warning');return;}
+  const delay=parseFloat(document.getElementById('mDelay').value)||cfg.digestDelay;
+  isKeto=document.getElementById('ketoCheck').checked;
+  lastMeal=new Date(`${dv}T${tv}`);
+  // fastStart = last meal + digest delay = when fasting actually began
+  fastStart=new Date(lastMeal.getTime()+delay*3600000);
+  // trackStart = same as fastStart — timer counts from the entered date, not from now
+  trackStart=fastStart;
+  milestonesGiven.clear();
+  if(!game.active){
+    game=newGame();
+    game.active=true;
+  }
+  saveAll();
+  startTicking();
+  closeModal('modalStart');
+  renderGame();
+  showToast('Fast started','success');
+}
+
+function stopFast() {
+  if(!fastStart) return;
+  if(!confirm('End your current fast?')) return;
+  fastStart=null;trackStart=null;lastMeal=null;
+  clearInterval(timerInt);timerInt=null;
+  document.getElementById('timerDisplay').textContent='00:00:00';
+  document.getElementById('timerDisplay').classList.add('inactive');
+  document.getElementById('timerCard').classList.remove('active');
+  document.getElementById('timerLabel').textContent='No active fast';
+  document.getElementById('timerSub').textContent='Tap Start Fast to begin';
+  const er=document.getElementById('timerEditRow');if(er)er.style.display='none';
+  document.getElementById('timerEditRow').style.display='none';
+  document.getElementById('stageName').textContent='—';
+  document.getElementById('stageHrs').textContent='';
+  document.getElementById('stageDesc').textContent='Start your fast to see what your body is doing right now.';
+  document.getElementById('stageWarn').className='stage-warning';
+  document.getElementById('progressFill').style.width='0%';
+  document.getElementById('milestones').innerHTML='';
+  document.getElementById('statHours').textContent='0';
+  document.getElementById('statStage').textContent='—';
+  document.getElementById('statNext').textContent='—';
+  document.getElementById('waterCard').style.display='none';
+  renderStagesList(0);
+  saveAll();
+}
+
+function startTicking(){
+  if(timerInt) clearInterval(timerInt);
+  tick();
+  timerInt=setInterval(tick,1000);
+}
+
+// ── GAME ENGINE ──────────────────────────────────────────────
+function ts(){return new Date().toISOString();}
+function fmtTime(iso){
+  const d=new Date(iso);
+  let h=d.getHours(),m=d.getMinutes();
+  const ampm=h>=12?'pm':'am';
+  h=h%12||12;
+  return `${h}:${String(m).padStart(2,'0')}${ampm}`;
+}
+
+function addLogEntry(icon,label,pts,type){
+  if(!game.active) return;
+  const effective_pts = pts * (type==='milestone'||type==='checkin'||type==='hungry'?1:game.mult);
+  // checkins and hungry have fixed pts (0 or 5), don't multiply
+  const final_pts = (type==='checkin') ? 0 : (type==='hungry' ? 5*game.mult : effective_pts);
+  game.score += (type==='checkin')?0:final_pts;
+  game.log.push({ts:ts(),icon,label,pts:final_pts,type,day:game.day,round:game.round});
+  saveAll();
+  renderGame();
+}
+
+function checkMilestonePoints(hf){
+  if(!game.active) return;
+  // Milestone bonus every 6 hours
+  [6,12,18,24,30,36,42,48,60,72,84,96].forEach(h=>{
+    if(hf>=h&&!milestonesGiven.has('ms_'+h)){
+      milestonesGiven.add('ms_'+h);
+      const pts=10*game.mult;
+      game.score+=pts;
+      game.log.push({ts:ts(),icon:'🏁',label:`${h}h fasting milestone`,pts,type:'milestone',day:game.day,round:game.round});
+      saveAll();
+      renderGame();
+      showToast(`🏁 ${h}h milestone — +${pts} pts`,'success');
+    }
+  });
+  // 2 pts per completed hour fasted (awarded once per hour)
+  const completedHours = Math.floor(hf);
+  if(completedHours>0 && !milestonesGiven.has('hr_'+completedHours)){
+    milestonesGiven.add('hr_'+completedHours);
+    const pts=2*game.mult;
+    game.score+=pts;
+    game.log.push({ts:ts(),icon:'⏱️',label:`Hour ${completedHours} complete`,pts,type:'hourly',day:game.day,round:game.round});
+    saveAll();
+    renderGame();
+  }
+}
+
+// Game action bar buttons
+function renderGameWaterBar(){
+  const today=new Date().toDateString();
+  const entries=waterLog.filter(e=>new Date(e.ts).toDateString()===today);
+  const total=entries.reduce((s,e)=>s+e.amount,0);
+  const goal=Number(cfg.waterGoal)||64;
+  const unit=cfg.waterUnit||'oz';
+  const pct=Math.min(100,Math.round((total/goal)*100));
+  const bar=document.getElementById('gameWaterBar');
+  const lbl=document.getElementById('gameWaterLabel');
+  const pctEl=document.getElementById('gameWaterPct');
+  if(bar) bar.style.width=pct+'%';
+  if(lbl) lbl.textContent=`${total} / ${goal} ${unit}`;
+  if(pctEl) pctEl.textContent=pct+'% of daily goal'+(pct>=100?' ✓':'');
+}
+
+function gameLogWater(){
+  if(!game.active){showToast('Start a fast first','warning');return;}
+  const amt=cfg.singleUnit?1:Number(cfg.bottleSize);
+  waterLog.push({ts:ts(),amount:amt,unit:cfg.waterUnit});
+  addLogEntry('💧',`Drank water (${amt}${cfg.waterUnit})`,5,'water');
+  renderGameWaterBar();
+  showToast(`💧 +${amt}${cfg.waterUnit}`,'success');
+}
+
+function gameLogElytes(){
+  if(!game.active){showToast('Start a fast first','warning');return;}
+  elyteLog.push({ts:ts()});
+  addLogEntry('⚡','Took electrolytes',5,'elyte');
+  showToast('⚡ Electrolytes logged','success');
+}
+
+function gameLogHungry(){
+  if(!game.active){showToast('Start a fast first','warning');return;}
+  addLogEntry('🔥','Felt hungry — made it through!',5,'hungry');
+  showToast('🔥 Hunger defeated — +5 pts','success');
+}
+
+// ── CHECK-IN ─────────────────────────────────────────────────
+function openCheckin(){
+  if(!game.active){showToast('Start a fast first','warning');return;}
+  selectedFeelings.clear();
+  const grid=document.getElementById('feelingsGrid');
+  grid.innerHTML=ALL_FEELINGS.map(f=>`<button class="feel-btn" onclick="toggleFeeling(this,'${f}')">${f}</button>`).join('');
+  openModal('modalCheckin');
+}
+
+function toggleFeeling(btn,feeling){
+  if(selectedFeelings.has(feeling)){selectedFeelings.delete(feeling);btn.classList.remove('selected');}
+  else{selectedFeelings.add(feeling);btn.classList.add('selected');}
+}
+
+function submitCheckin(){
+  if(selectedFeelings.size===0){showToast('Select at least one feeling','warning');return;}
+  const feelings=[...selectedFeelings];
+  const hf=getElapsedHours();
+  const h=Math.floor(hf);
+  const label=`Check-in at ${h}h: ${feelings.join(', ')}`;
+  game.checkins.push({ts:ts(),hours:hf,feelings,day:game.day,round:game.round});
+  game.log.push({ts:ts(),icon:'💬',label,pts:0,type:'checkin',day:game.day,round:game.round});
+  saveAll();
+  closeModal('modalCheckin');
+  renderGame();
+  showToast('Feelings logged — no points, just data','success');
+}
+
+// ── STRUCTURED GOALS ─────────────────────────────────────────
+function renderStructuredGoals(){
+  const ds=getDayState(game.round,game.day);
+  const isRound2Plus=game.round>1;
+  const container=document.getElementById('structuredGoals');
+  let html='';
+
+  // 1. Scale (not shown in round 2+ day 1 if they just ate)
+  if(!isRound2Plus||game.day>1){
+    html+=`<div class="obj-card">
+      <div class="obj-card-header">⚖️ Step on the scale first thing</div>
+      <div class="obj-card-body">`;
+    if(ds.scaleDone && ds.scaleWeight){
+      html+=`<div style="display:flex;align-items:center;gap:0.75rem;">
+        <span style="color:var(--accent);font-size:0.7rem;">✓ ${ds.scaleWeight} ${cfg.weightUnit||'lbs'} logged — +20 pts</span>
+        <button style="font-family:DM Mono,monospace;font-size:0.56rem;letter-spacing:0.06em;text-transform:uppercase;background:none;border:1px solid var(--border);border-radius:5px;color:var(--muted);padding:0.2rem 0.5rem;cursor:pointer;" onclick="reopenScale()">edit</button>
+      </div>`;
+    } else {
+      html+=`<button class="g-btn g-btn-primary" style="max-width:220px;" onclick="doScale()">Log My Weight Now</button>`;
+    }
+    html+=`</div></div>`;
+  }
+
+  // 3. Sleep (previous night)
+  html+=`<div class="obj-card">
+    <div class="obj-card-header">😴 Hours slept last night?</div>
+    <div class="obj-card-body">`;
+  if(ds.sleepHours!==null&&ds.sleepQuality!==null){
+    const pts=calcSleepPts(ds.sleepHours,ds.sleepQuality,ds);
+    const c=pts>0?'var(--accent)':pts<0?'var(--danger)':'var(--muted)';
+    const qual=ds.sleepQuality==='good'?'good sleep':'poor sleep';
+    html+=`<span style="color:${c};font-size:0.7rem;">✓ ${ds.sleepHours}h — ${qual} ${pts!==0?`— ${pts>0?'+':''}${pts} pts`:''}</span>`;
+    if(ds.sleepQuality==='bad'){
+      html+=`<div style="font-size:0.6rem;color:var(--warn2);margin-top:0.4rem;line-height:1.5;">Consider why: dehydration, electrolyte imbalance, hunger-induced cortisol spikes, and lowered blood sugar can all disrupt sleep during fasting.</div>`;
+    }
+    if(ds.sleepHours>10){
+      const exemptNote = ds.workoutChoice&&ds.workoutChoice!=='none' ? 'Workout recovery exemption applied — reduced penalty.' : 'Over 10h is too much even during a fast. Your body needs consistent sleep cycles.';
+      html+=`<div style="font-size:0.6rem;color:var(--warn2);margin-top:0.4rem;line-height:1.5;">${exemptNote}</div>`;
+    }
+  } else if(ds.sleepHours!==null&&ds.sleepQuality===null){
+    // Hours entered, awaiting quality
+    html+=`<div style="font-size:0.68rem;color:var(--text);margin-bottom:0.45rem;">${ds.sleepHours} hours — how was the quality?</div>`;
+    html+=`<div class="sleep-quality-opts">
+      <button class="sq-opt visible" onclick="doSleepQuality('good')">😴 Good sleep</button>
+      <button class="sq-opt visible" onclick="doSleepQuality('bad')">😵 Got bad sleep</button>
+    </div>`;
+  } else {
+    html+=`<div style="font-size:0.62rem;color:var(--muted);margin-bottom:0.5rem;">Tap your hours, or type a custom value:</div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:0.6rem;">
+      ${[4,5,6,7,8,9,10,11,12].map(n=>`<button style="font-family:'DM Mono',monospace;font-size:0.65rem;padding:0.32rem 0.6rem;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;transition:all 0.15s;" onclick="selectSleepHours(${n})">${n}h</button>`).join('')}
+    </div>
+    <div class="sleep-input-row">
+      <input type="number" class="sleep-hrs-input" id="sleepHrsInput" min="1" max="24" step="0.5" placeholder="custom hrs">
+      <button class="sleep-submit" onclick="doSleepHours()">Log</button>
+    </div>`;
+  }
+  html+=`</div></div>`;
+
+  // 2. Workout
+  html+=`<div class="obj-card">
+    <div class="obj-card-header">🏋️ Workout?</div>
+    <div class="obj-card-body">`;
+  if(ds.workoutChoice){
+    const pts=ds.workoutChoice==='light'?25:ds.workoutChoice==='heavy'?-20:0;
+    const c=pts>0?'var(--accent)':pts<0?'var(--danger)':'var(--muted)';
+    html+=`<span style="color:${c};font-size:0.7rem;">✓ ${ds.workoutChoice==='light'?'Light workout':ds.workoutChoice==='heavy'?'Heavy workout':'No workout'} ${pts!==0?`— ${pts>0?'+':''}${pts} pts`:''}</span>`;
+  } else {
+    html+=`<div class="workout-opts">
+      <button class="w-opt" onclick="doWorkout('light')">Light / walk</button>
+      <button class="w-opt" onclick="doWorkout('heavy')">Heavy / intense</button>
+      <button class="w-opt" onclick="doWorkout('none')">None today</button>
+    </div>`;
+  }
+  html+=`</div></div>`;
+
+  // 4. Get to bed early
+  html+=`<div class="obj-card">
+    <div class="obj-card-header">🌙 Get to bed early</div>
+    <div class="obj-card-body">`;
+  if(ds.bedEarly){
+    html+=`<span style="color:var(--accent);font-size:0.7rem;">✓ Logged — +15 pts</span>`;
+  } else {
+    html+=`<button class="g-btn g-btn-sec" style="max-width:220px;" onclick="doBedEarly()">I'm heading to bed early</button>`;
+  }
+  html+=`</div></div>`;
+
+  container.innerHTML=html;
+}
+
+function calcSleepPts(hours,quality,ds){
+  const workedOutYesterday = !!ds.workoutChoice && ds.workoutChoice !== 'none';
+  if(hours < 6)  return -25;                        // too little — penalty regardless
+  if(hours <= 8) return quality==='good' ? 20 : 10; // ideal 6-8h window
+  if(hours <= 10){                                   // 9-10h — acceptable during a fast
+    return quality==='good' ? 10 : 5;
+  }
+  // Over 10h — too much even during a fast
+  if(workedOutYesterday) return quality==='good' ? 5 : 0; // exemption: recovery after workout
+  return -10; // no exemption — penalty
+}
+
+function reopenScale(){
+  // Clear the prior (broken/blank) scale answer so it can be re-entered
+  const ds = getDayState(game.round, game.day);
+  ds.scaleDone = false;
+  ds.scaleWeight = null;
+  // Remove the prior scale log entry and reverse its points
+  const idx = game.log.findIndex(e => e.type === 'scale' && e.day === game.day && e.round === game.round);
+  if(idx !== -1){
+    game.score -= game.log[idx].pts;
+    game.log.splice(idx, 1);
+  }
+  saveAll();
+  doScale();
+}
+
+function doScale(){
+  const ds=getDayState(game.round,game.day);
+  // Only block if already properly completed (has an actual weight value)
+  if(ds.scaleDone && ds.scaleWeight) return;
+  // Always clear stale state before opening
+  ds.scaleDone=false;
+  const input=document.getElementById('scaleWeightInput');
+  if(input){ input.value=''; input.focus(); }
+  const lbl=document.getElementById('scaleUnitLabel');
+  if(lbl) lbl.textContent=cfg.weightUnit||'lbs';
+  openModal('modalScale');
+  // Focus the input after modal opens
+  setTimeout(()=>{ const el=document.getElementById('scaleWeightInput'); if(el) el.focus(); }, 100);
+}
+
+function confirmScale(){
+  const input=document.getElementById('scaleWeightInput');
+  const val=parseFloat(input?.value);
+  if(!val||val<=0){showToast('Enter your weight first','warning');return;}
+  const unit=cfg.weightUnit||'lbs';
+  const ds=getDayState(game.round,game.day);
+  ds.scaleDone=true;
+  ds.scaleWeight=val;
+  // Save weight to persistent profile data regardless of game outcome
+  cfg.currentWeight=val;
+  // Store in weight history with timestamp
+  if(!cfg.weightHistory) cfg.weightHistory=[];
+  cfg.weightHistory.push({ts:new Date().toISOString(),weight:val,unit,day:game.day,round:game.round});
+  saveAll();
+  closeModal('modalScale');
+  addLogEntry('⚖️',`Morning weigh-in: ${val} ${unit}`,20,'scale');
+  showToast(`+20 pts — ${val} ${unit} logged`,'success');
+}
+
+function doWorkout(choice){
+  const ds=getDayState(game.round,game.day);
+  if(ds.workoutChoice) return;
+  ds.workoutChoice=choice;
+  if(choice==='light'){addLogEntry('🚶','Light workout (walk / stretch / yoga)',25,'workout');}
+  else if(choice==='heavy'){addLogEntry('🏋️','Heavy / intense workout — physiological stress penalty',-20,'workout');}
+  else{addLogEntry('🛋️','No workout today',0,'workout');}
+  saveAll();renderGame();
+}
+
+function selectSleepHours(n){
+  const input = document.getElementById('sleepHrsInput');
+  if(input){ input.value = n; }
+  doSleepHours();
+}
+
+function doSleepHours(){
+  const input=document.getElementById('sleepHrsInput');
+  if(!input) return;
+  const hrs=parseFloat(input.value);
+  if(!hrs||hrs<0||hrs>24){showToast('Enter valid hours','warning');return;}
+  const ds=getDayState(game.round,game.day);
+  ds.sleepHours=hrs;
+  saveAll();renderGame();
+}
+
+function doSleepQuality(q){
+  const ds=getDayState(game.round,game.day);
+  if(ds.sleepQuality) return;
+  ds.sleepQuality=q;
+  const pts=calcSleepPts(ds.sleepHours,q,ds);
+  const label=`Slept ${ds.sleepHours}h — ${q==='good'?'good sleep':'poor sleep'}`;
+  addLogEntry('😴',label,pts,'sleep');
+  if(q==='bad') showToast('Same pts — but reflect on why sleep was poor','warning');
+  else showToast(`+${pts} pts — sleep logged`,'success');
+}
+
+function doBedEarly(){
+  const ds=getDayState(game.round,game.day);
+  if(ds.bedEarly) return;
+  ds.bedEarly=true;
+  addLogEntry('🌙','Got to bed early',15,'bed');
+  showToast('+15 pts — early bed logged','success');
+}
+
+// ── BREAK FAST MODAL ─────────────────────────────────────────
+function openBreakFast(){
+  const maxR=Number(cfg.maxRounds);
+  const canContinue=game.round<maxR;
+  const opts=[
+    {id:'egg_soup',icon:'🥚',label:'Egg soup / bone broth',pts:30,note:'Ideal re-feed: gentle on the gut, protein without sugar spike'},
+    {id:'omad_clean',icon:'🍽️',label:'OMAD / clean single meal',pts:canContinue?25:20,note:canContinue?'One meal then back to fasting — bonus points, unlocks Round 2':'Clean single meal — solid re-feed choice'},
+    {id:'if_clean',icon:'🕐',label:'IF eating window (2–4hr)',pts:canContinue?20:15,note:canContinue?'Intermittent window then back to fasting — unlocks Round 2':'Eating window re-feed'},
+    {id:'off_list',icon:'🍰',label:'Sugar / processed / off-list food',pts:-30,note:'Defeats autophagy benefits, insulin spike resets metabolic state — significant penalty'}
+  ];
+  document.getElementById('breakFastOpts').innerHTML=opts.map(o=>`
+    <div class="bf-opt" onclick="doBreakFast('${o.id}',${o.pts},'${o.label}')">
+      <div class="bf-opt-icon">${o.icon}</div>
+      <div style="flex:1"><div class="bf-opt-label">${o.label}</div><div style="font-size:0.58rem;color:var(--muted);margin-top:0.1rem;">${o.note}</div></div>
+      <div class="bf-opt-pts" style="color:${o.pts>0?'var(--accent)':'var(--danger)'}">${o.pts>0?'+':''}${o.pts}</div>
+    </div>`).join('');
+  openModal('modalBreakFast');
+}
+
+function doBreakFast(choice,pts,label){
+  const ds=getDayState(game.round,game.day);
+  ds.breakFastChoice=choice;
+  addLogEntry(choice==='off_list'?'⚠️':'🍽️',`Broke fast: ${label}`,pts,'break_fast');
+  closeModal('modalBreakFast');
+  saveAll();renderGame();
+  showToast(pts>0?`+${pts} pts`:`${pts} pts — off-list food penalty`,'success');
+}
+
+// ── END DAY ──────────────────────────────────────────────────
+function endDay(){
+  const ds=getDayState(game.round,game.day);
+  if(ds.dayEnded) return;
+  ds.dayEnded=true;
+  addLogEntry('📅',`Day ${game.day} ended`,0,'day_end');
+  game.day++;
+  saveAll();renderGame();
+  showToast(`Day ${game.day-1} complete — Day ${game.day} begins`,'success');
+}
+
+// ── ROUND ADVANCE ────────────────────────────────────────────
+function openBreakFastAndAdvance(){
+  // Must break fast first, then will prompt for round advance
+  openBreakFast();
+}
+
+function advanceRound(){
+  const ds=getDayState(game.round,game.day);
+  if(!ds.breakFastChoice){showToast('Log how you broke your fast first','warning');return;}
+  if(game.round>=Number(cfg.maxRounds)){showToast('Already at max rounds','warning');return;}
+  if(game.round+1===3&&cfg.round3Warning){openModal('modalRound3');return;}
+  doAdvanceRound();
+}
+
+function confirmRound3(){closeModal('modalRound3');doAdvanceRound();}
+
+function doAdvanceRound(){
+  game.round++;
+  game.mult=game.round;
+  game.log.push({ts:ts(),icon:'🔄',label:`Advanced to Round ${game.round} — ${game.round}× multiplier unlocked. All future points at bonus rate.`,pts:0,type:'round_advance',day:game.day,round:game.round});
+  milestonesGiven.clear(); // milestones reset per round
+  saveAll();renderGame();
+  showToast(`Round ${game.round} started — ${game.round}× points!`,'success');
+}
+
+// ── END GAME ─────────────────────────────────────────────────
+function endGame(){
+  if(!confirm('End the game and save your final score?')) return;
+  document.getElementById('finalScore').textContent=game.score;
+  gameHistory.unshift({
+    date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+    score:game.score,
+    rounds:game.round,
+    days:game.day,
+    log:[...game.log],
+    checkins:[...game.checkins]
+  });
+  if(gameHistory.length>20) gameHistory=gameHistory.slice(0,20);
+  game=newGame();
+  milestonesGiven.clear();
+  saveAll();
+  openModal('modalEndGame');
+  renderGame();
+}
+
+// ── RENDER GAME ──────────────────────────────────────────────
+function renderGame(){
+  const inactive=document.getElementById('gameInactive');
+  const active=document.getElementById('gameActive');
+  if(!game.active){
+    inactive.style.display='';active.style.display='none';
+  } else {
+    inactive.style.display='none';active.style.display='';
+    renderGameHero();
+    renderStructuredGoals();
+    renderDayLog();
+    renderRoundControls();
+  }
+  if(game.active) renderGameWaterBar();
+  renderHistory();
+}
+
+function renderGameHero(){
+  document.getElementById('gScore').textContent=game.score;
+  document.getElementById('gMult').textContent=game.mult>1?`${game.mult}× bonus multiplier active`:'';
+  const roundLabel=`Round ${game.round}${game.round>1?' ★':''}`;
+  document.getElementById('gRoundBadge').textContent=roundLabel;
+  document.getElementById('gDayBadge').textContent=`Day ${game.day}`;
+  document.getElementById('todayGoalsTitle').textContent=`Day ${game.day} Goals`;
+}
+
+function renderDayLog(){
+  const logEl=document.getElementById('dayLog');
+  if(game.log.length===0){logEl.innerHTML='<div class="empty-state" style="padding:1rem;">No entries yet today.<br>Use the Quick Actions above or complete a goal.</div>';return;}
+
+  let html='';
+  let lastDay=null, lastRound=null;
+
+  for(const entry of game.log){
+    // Day/round separator
+    if(entry.round!==lastRound||entry.day!==lastDay){
+      const isR2=entry.round>1;
+      html+=`<div class="day-header">
+        <div class="day-header-line"></div>
+        <div class="day-header-label ${isR2?'round2':''}">Round ${entry.round} · Day ${entry.day}</div>
+        <div class="day-header-line"></div>
+      </div>`;
+      lastRound=entry.round;lastDay=entry.day;
+    }
+
+    const ptsStr=entry.pts===0?'—':entry.pts>0?`+${entry.pts}`:String(entry.pts);
+    const ptsCls=entry.pts>0?'log-pts-pos':entry.pts<0?'log-pts-neg':'log-pts-zero';
+    const typeCls=entry.type==='water'?'water-entry':entry.type==='elyte'?'elyte-entry':entry.type==='checkin'?'checkin-entry':entry.type==='hungry'?'hungry-entry':entry.type==='milestone'?'milestone-entry':entry.pts<0?'penalty-entry':'';
+
+    html+=`<div class="log-entry ${typeCls}">
+      <div class="log-entry-time">${fmtTime(entry.ts)}</div>
+      <div class="log-entry-icon">${entry.icon}</div>
+      <div class="log-entry-label">${entry.label}</div>
+      <div class="log-entry-pts ${ptsCls}">${ptsStr}</div>
+    </div>`;
+  }
+  logEl.innerHTML=html;
+  // Auto-scroll to bottom
+  logEl.scrollTop=logEl.scrollHeight;
+}
+
+function renderRoundControls(){
+  const maxR=Number(cfg.maxRounds);
+  const ds=getDayState(game.round,game.day);
+  const desc=document.getElementById('roundDesc');
+  const btns=document.getElementById('roundCtrlBtns');
+
+  if(game.round<maxR){
+    desc.textContent=`Round ${game.round} of ${maxR}. When you're ready to eat, choose how you break your fast below. After eating, you can start Round ${game.round+1} — all points earn at a ${game.round+1}× bonus rate from there.`;
+  } else {
+    desc.textContent=`Round ${game.round} of ${maxR} — final round. End Day to close today's log. End Game when you return to normal eating.`;
+  }
+
+  let html=`<button class="g-btn g-btn-endday" onclick="endDay()">📅 End Day ${game.day}</button>`;
+
+  if(game.round<maxR){
+    html+=`<button class="g-btn g-btn-round2" onclick="openBreakFastAndAdvance()">🍽️ Break Fast &amp; Enter Round ${game.round+1} →</button>`;
+  }
+
+  html+=`<button class="g-btn g-btn-danger" onclick="endGame()">End Game &amp; Save Score</button>`;
+  btns.innerHTML=html;
+}
+
+// ── HISTORY ──────────────────────────────────────────────────
+function renderHistory(){
+  const el=document.getElementById('gameHistory');
+  if(!gameHistory.length){el.innerHTML='<div class="empty-state">No completed games yet.</div>';return;}
+  el.innerHTML=gameHistory.map((g,i)=>{
+    const feelingTotals={};
+    (g.checkins||[]).forEach(c=>c.feelings.forEach(f=>{feelingTotals[f]=(feelingTotals[f]||0)+1;}));
+    const feelingChips=Object.entries(feelingTotals).sort((a,b)=>b[1]-a[1]).map(([f,count])=>`<span class="feeling-chip reported">${f} ×${count}</span>`).join('');
+    return `<div class="hist-item">
+      <div class="hist-summary" onclick="toggleHist(${i})">
+        <div>
+          <div class="hist-title">Extended · Round ${g.rounds} · Day ${g.days||1}</div>
+          <div class="hist-date">${g.date}</div>
+        </div>
+        <div class="hist-score">${g.score}</div>
+      </div>
+      <div class="hist-detail" id="hd-${i}">
+        ${g.log.map(e=>`<div class="hist-line ${e.pts>0?'pos':e.pts<0?'neg':''}">
+          <span>${e.icon||''} ${e.label}</span><span>${e.pts>0?'+':''}${e.pts||'—'}</span>
+        </div>`).join('')}
+        ${feelingChips?`<div class="hist-feelings-summary">
+          <div class="hist-feelings-title">Feeling Check-ins</div>
+          <div class="feelings-cloud">${feelingChips}</div>
+        </div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleHist(i){const el=document.getElementById('hd-'+i);if(el)el.classList.toggle('open');}
+
+// ── RESET CURRENT GAME ──────────────────────────────────────
+function resetCurrentGame(){
+  if(!confirm('Reset the current game? Score, log, and all goal answers are cleared. Game history and your settings are kept. Fast timer will restart from now.')) return;
+  // Stop timer cleanly
+  clearInterval(timerInt); timerInt = null;
+  // Reset fast pointers so everything starts fresh
+  fastStart = null; trackStart = null; lastMeal = null;
+  // Reset game object but keep history
+  game = newGame();
+  milestonesGiven.clear();
+  // Reset track tab display
+  document.getElementById('timerDisplay').textContent='00:00:00';
+  document.getElementById('timerDisplay').classList.add('inactive');
+  document.getElementById('timerCard').classList.remove('active');
+  document.getElementById('timerLabel').textContent='No active fast';
+  document.getElementById('timerSub').textContent='Tap Start Fast to begin';
+  const er=document.getElementById('timerEditRow');if(er)er.style.display='none';
+  document.getElementById('stageName').textContent='—';
+  document.getElementById('stageHrs').textContent='';
+  document.getElementById('stageDesc').textContent='Start your fast to see what your body is doing right now.';
+  document.getElementById('stageWarn').className='stage-warning';
+  document.getElementById('progressFill').style.width='0%';
+  document.getElementById('milestones').innerHTML='';
+  document.getElementById('statHours').textContent='0';
+  document.getElementById('statStage').textContent='—';
+  document.getElementById('statNext').textContent='—';
+  document.getElementById('waterCard').style.display='none';
+  saveAll();
+  renderGame();
+  renderStagesList(0);
+  showToast('Game reset — tap Start Fast to begin','success');
+}
+
+// ── CLEAR DATA ───────────────────────────────────────────────
+function clearAllData(){
+  if(!confirm('Clear ALL data? This removes your fast history, game history, weight log, water log, and settings. This cannot be undone.')) return;
+  localStorage.removeItem('fast_v6');
+  fastStart=null; trackStart=null; lastMeal=null; isKeto=false;
+  waterLog=[]; elyteLog=[];
+  game=newGame(); gameHistory=[];
+  milestonesGiven.clear();
+  cfg={...DEFAULTS};
+  clearInterval(timerInt); timerInt=null;
+  applySettings();
+  renderGame();
+  renderStagesList(0);
+  document.getElementById('timerDisplay').textContent='00:00:00';
+  document.getElementById('timerDisplay').classList.add('inactive');
+  document.getElementById('timerCard').classList.remove('active');
+  document.getElementById('timerLabel').textContent='No active fast';
+  document.getElementById('timerSub').textContent='Tap Start Fast to begin';
+  const er=document.getElementById('timerEditRow');if(er)er.style.display='none';
+  document.getElementById('stageName').textContent='—';
+  document.getElementById('stageHrs').textContent='';
+  document.getElementById('stageDesc').textContent='Start your fast to see what your body is doing right now.';
+  document.getElementById('stageWarn').className='stage-warning';
+  document.getElementById('progressFill').style.width='0%';
+  document.getElementById('milestones').innerHTML='';
+  document.getElementById('statHours').textContent='0';
+  document.getElementById('statStage').textContent='—';
+  document.getElementById('statNext').textContent='—';
+  document.getElementById('waterCard').style.display='none';
+  showToast('All data cleared','success');
+}
+
+// ── CSV EXPORT ───────────────────────────────────────────────
+function exportCSV(){
+  const q=v=>`"${String(v).replace(/"/g,'""')}"`;
+  const rows=[['Type','Timestamp','Value','Unit','Notes','Day','Round']];
+  rows.push(['Setting',new Date().toISOString(),'weightUnit','',cfg.weightUnit,'','']);
+  rows.push(['Setting',new Date().toISOString(),'waterUnit','',cfg.waterUnit,'','']);
+  rows.push(['Setting',new Date().toISOString(),'waterGoal',cfg.waterUnit,cfg.waterGoal,'','']);
+  rows.push(['Setting',new Date().toISOString(),'baseWeight',cfg.weightUnit,cfg.baseWeight,'','']);
+  for(const w of (cfg.weightHistory||[])) rows.push(['WeightLog',w.ts,w.weight,w.unit,`day:${w.day||''} round:${w.round||''}`,w.day||'',w.round||'']);
+  if(fastStart) rows.push(['FastStart',fastStart.toISOString(),'','',isKeto?'keto':'standard','','']);
+  if(lastMeal) rows.push(['LastMeal',lastMeal.toISOString(),'','','','','']);
+  for(const e of waterLog) rows.push(['Water',e.ts,e.amount,e.unit,'','','']);
+  for(const e of elyteLog) rows.push(['Electrolytes',e.ts,1,'serving','','','']);
+  for(const g of gameHistory){
+    rows.push(['GameResult',g.date,g.score,'pts',`rounds:${g.rounds} days:${g.days||1}`,'','']);
+    for(const e of g.log) rows.push(['GameEntry',e.ts||'',e.pts,'pts',e.label,e.day||'',e.round||'']);
+    for(const c of (g.checkins||[])) rows.push(['CheckIn',c.ts||'',c.hours||'','hrs',c.feelings.join(';'),c.day||'',c.round||'']);
+  }
+  if(game.active){
+    rows.push(['GameActive',new Date().toISOString(),game.score,'pts',`round:${game.round} day:${game.day}`,'','']);
+    for(const e of game.log) rows.push(['GameEntry_Current',e.ts||'',e.pts,'pts',e.label,e.day||'',e.round||'']);
+    for(const c of game.checkins) rows.push(['CheckIn_Current',c.ts||'',c.hours||'','hrs',c.feelings.join(';'),c.day||'',c.round||'']);
+  }
+  const csv=rows.map(r=>r.map(q).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`fast-tracker-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  showToast('CSV exported','success');
+}
+
+// ── MODALS ───────────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+});
+
+// ── ONBOARDING ───────────────────────────────────────────────
+const OB_STEPS=[
+  {title:'Welcome — Let\'s set you up',sub:'Step 1 of 7: What is your current weight? This is your baseline data point.',
+   html:`<div class="m-field"><label>Current Weight</label><input type="number" class="m-input" id="ob-weight" min="0" max="999" step="0.1" placeholder="e.g. 165"></div>`},
+  {title:'Weight Unit',sub:'Step 2 of 7: Pounds or kilograms?',
+   html:`<div style="display:flex;gap:0.65rem;"><button class="m-btn" id="ob-lbs" onclick="obSelUnit('weight','lbs')" style="background:var(--surface2);border:1px solid var(--border)">lbs</button><button class="m-btn" id="ob-kg" onclick="obSelUnit('weight','kg')" style="background:var(--surface2);border:1px solid var(--border)">kg</button></div>`},
+  {title:'Water Unit',sub:'Step 3 of 7: How do you measure water?',
+   html:`<div style="display:flex;gap:0.65rem;"><button class="m-btn" id="ob-oz" onclick="obSelUnit('water','oz')" style="background:var(--surface2);border:1px solid var(--border)">fl oz</button><button class="m-btn" id="ob-ml" onclick="obSelUnit('water','ml')" style="background:var(--surface2);border:1px solid var(--border)">ml</button></div>`},
+  {title:'Bottle / Cup Size',sub:'Step 4 of 7: How much does your bottle or cup hold? The +Water button adds this per tap.',
+   html:`<div class="m-field"><label>Size</label><input type="number" class="m-input" id="ob-bottle" min="1" max="2000" placeholder="e.g. 16"><div class="m-field-note">Common: 8oz cup · 16oz bottle · 32oz Nalgene · 500ml bottle</div></div><div class="m-check-row" onclick="document.getElementById('ob-single').click()"><input type="checkbox" id="ob-single"><div><div class="m-check-lbl">Add by single unit instead</div><div class="m-check-note">+Water adds 1 unit per tap</div></div></div>`},
+  {title:'Daily Water Goal',sub:'Step 5 of 7: How much water do you aim to drink each day?',
+   html:`<div class="m-field"><label>Daily Goal</label><input type="number" class="m-input" id="ob-wgoal" min="1" max="10000" placeholder="e.g. 64"><div class="m-field-note">Common: 64oz / 2000ml</div></div>`},
+  {title:'Keto / Carnivore Default',sub:'Step 6 of 7: Do you typically eat keto or carnivore? Adjusts the digestive delay to ~4.5 hours since fat and protein digest faster with no carb-driven insulin spike.',
+   html:`<div class="m-check-row" onclick="document.getElementById('ob-keto').click()"><input type="checkbox" id="ob-keto"><div><div class="m-check-lbl">I eat keto / carnivore by default</div><div class="m-check-note">Adjusts digestive delay to 4.5hrs</div></div></div>`},
+  {title:'You\'re all set',sub:'Step 7 of 7: Settings saved. Change anything later in the Settings tab.',
+   html:`<div style="text-align:center;padding:0.75rem 0;"><div style="font-size:2rem;margin-bottom:0.5rem;">✅</div><div style="font-size:0.68rem;color:var(--muted);line-height:1.7;">Educational simulation — all data stays on your device.</div></div>`}
+];
+
+function startOnboarding(){obStep=0;obData={};renderObStep();openModal('modalOnboard');}
+
+function renderObStep(){
+  const step=OB_STEPS[obStep];
+  document.getElementById('obSteps').innerHTML=OB_STEPS.map((_,i)=>`<div class="ob-step ${i<obStep?'done':i===obStep?'current':''}"></div>`).join('');
+  document.getElementById('obContent').innerHTML=`<div class="modal-title">${step.title}</div><div class="modal-sub">${step.sub}</div>${step.html}`;
+  document.getElementById('btnObBack').style.display=obStep===0?'none':'';
+  document.getElementById('btnObNext').textContent=obStep===OB_STEPS.length-1?'Finish':'Next';
+  setTimeout(()=>{
+    if(obStep===1)obHiUnit('weight',obData.weightUnit||'lbs');
+    if(obStep===2)obHiUnit('water',obData.waterUnit||'oz');
+  },40);
+}
+
+function obHiUnit(type,sel){
+  const pairs={weight:['lbs','kg'],water:['oz','ml']};
+  pairs[type].forEach(u=>{
+    const el=document.getElementById('ob-'+u);if(!el)return;
+    el.style.background=sel===u?'var(--accent)':'var(--surface2)';
+    el.style.color=sel===u?'#0c0f0a':'';
+  });
+}
+
+function obSelUnit(type,u){
+  if(type==='weight')obData.weightUnit=u; else obData.waterUnit=u;
+  obHiUnit(type,u);
+}
+
+function obCollect(){
+  if(obStep===0){const v=document.getElementById('ob-weight');if(v)obData.baseWeight=v.value||'';}
+  if(obStep===3){
+    const v=document.getElementById('ob-bottle');if(v)obData.bottleSize=Number(v.value)||16;
+    const s=document.getElementById('ob-single');if(s)obData.singleUnit=s.checked;
+  }
+  if(obStep===4){const v=document.getElementById('ob-wgoal');if(v)obData.waterGoal=Number(v.value)||64;}
+  if(obStep===5){const cb=document.getElementById('ob-keto');if(cb)obData.ketoDefault=cb.checked;}
+}
+
+function obNext(){
+  obCollect();
+  if(obStep===OB_STEPS.length-1){Object.assign(cfg,obData);cfg.onboarded=true;saveAll();applySettings();closeModal('modalOnboard');return;}
+  obStep++;renderObStep();
+}
+
+function obBack(){if(obStep>0){obStep--;renderObStep();}}
+
+// ── TOAST ────────────────────────────────────────────────────
+let toastT=null;
+function showToast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast show '+type;
+  if(toastT)clearTimeout(toastT);
+  toastT=setTimeout(()=>el.classList.remove('show'),2400);
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+function init(){
+  const had=loadAll();
+  applySettings();
+  renderStagesList(0);
+  if(fastStart) startTicking();
+  renderGame();
+  if(!had||!cfg.onboarded) setTimeout(startOnboarding,350);
+}
+init();
+</script>
+</body>
+</html>
